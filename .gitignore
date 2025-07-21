@@ -1,0 +1,11 @@
+.cursor
+/editron-app/node_modules
+/editron-app/dist
+/editron-app/build
+/editron-app/src-tauri/target
+/editron-app/src-tauri/Cargo.lock
+/editron-app/src-tauri/Cargo.toml
+/editron-app/src-tauri/Cargo.lock
+/editron-gateway/node_modules
+/editron-gateway/dist
+/editron-app/.vscode
