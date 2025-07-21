@@ -1,4 +1,5 @@
 use crate::http_client;
+use crate::config::AppConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
@@ -75,6 +76,7 @@ lazy_static::lazy_static! {
     static ref SERVERS: Mutex<Vec<Server>> = Mutex::new(vec![]);
     static ref ACCESS_TOKENS: Mutex<HashMap<String, ServerAccessToken>> = Mutex::new(HashMap::new());
     static ref OAUTH_STATE: Mutex<Option<String>> = Mutex::new(None);
+    static ref CONFIG: AppConfig = AppConfig::load();
 }
 
 /// Gets a server by ID from the global state
@@ -213,7 +215,7 @@ async fn get_user_profile(server_id: &str) -> Result<UserProfile, String> {
     let client = http_client::get_client();
     // Desktop apps use JWT tokens via Authorization header (NOT cookies)
     let res = client
-        .get("http://localhost:5000/api/v1/auth/user") // JWT-protected endpoint
+        .get(&CONFIG.user_profile_url()) // JWT-protected endpoint
         .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
@@ -359,54 +361,24 @@ async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result
                                 line-height: 1.6;
                             }
                             
-                            .actions {
-                                display: flex;
-                                flex-direction: column;
-                                gap: 16px;
+                            .auto-close-info {
+                                margin-top: 32px;
+                                padding: 20px;
+                                background: #f8fafc;
+                                border-radius: 12px;
+                                border: 1px solid #e2e8f0;
                             }
                             
-                            .btn {
-                                padding: 12px 24px;
-                                border-radius: 8px;
-                                font-size: 16px;
+                            .countdown {
+                                font-size: 18px;
                                 font-weight: 600;
-                                text-decoration: none;
-                                cursor: pointer;
-                                transition: all 0.2s ease;
-                                border: none;
-                                display: inline-flex;
-                                align-items: center;
-                                justify-content: center;
-                                gap: 8px;
+                                color: #475569;
+                                text-align: center;
                             }
                             
-                            .btn-primary {
-                                background: #4f46e5;
-                                color: white;
-                            }
-                            
-                            .btn-primary:hover {
-                                background: #4338ca;
-                                transform: translateY(-1px);
-                                box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
-                            }
-                            
-                            .btn-secondary {
-                                background: #f3f4f6;
-                                color: #374151;
-                                border: 1px solid #d1d5db;
-                            }
-                            
-                            .btn-secondary:hover {
-                                background: #e5e7eb;
-                            }
-                            
-                            .close-info {
-                                margin-top: 24px;
-                                padding-top: 24px;
-                                border-top: 1px solid #e5e7eb;
-                                color: #9ca3af;
-                                font-size: 14px;
+                            #countdown {
+                                color: #4f46e5;
+                                font-size: 24px;
                             }
                         </style>
                     </head>
@@ -419,43 +391,59 @@ async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result
                             </div>
                             
                             <h1>Authentication Successful!</h1>
-                            <p>You have successfully signed in to Editron. Return to the desktop application to continue.</p>
+                            <p>You have successfully signed in to Editron. This window will close automatically.</p>
                             
-                            <div class="actions">
-                                <button class="btn btn-primary" onclick="openDesktopApp()">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M13 3L4 14h6v7l9-11h-6V3z"/>
-                                    </svg>
-                                    Open Editron App
+                            <div class="auto-close-info">
+                                <div class="countdown" id="countdown-container">
+                                    Closing in <span id="countdown">3</span> seconds...
+                                </div>
+                                <button id="manual-close" onclick="tryCloseWindow()" style="display: none; margin-top: 16px; padding: 8px 16px; border: none; background: #4f46e5; color: white; border-radius: 6px; cursor: pointer;">
+                                    Close This Tab
                                 </button>
-                                <button class="btn btn-secondary" onclick="window.close()">
-                                    Close This Window
-                                </button>
-                            </div>
-                            
-                            <div class="close-info">
-                                You can safely close this browser window
                             </div>
                         </div>
                         
                         <script>
-                            function openDesktopApp() {
-                                // Try to focus the desktop app window
-                                window.location.href = 'editron-app://focus';
-                                
-                                // Also close this window after a short delay
-                                setTimeout(() => {
+                            let countdown = 3;
+                            const countdownElement = document.getElementById('countdown');
+                            
+                            function tryCloseWindow() {
+                                try {
+                                    // Try to close the window
                                     window.close();
-                                }, 1000);
+                                    
+                                    // If we're still here after 500ms, the close didn't work
+                                    setTimeout(() => {
+                                        // Show manual close button and update message
+                                        document.getElementById('countdown-container').style.display = 'none';
+                                        document.getElementById('manual-close').style.display = 'block';
+                                        document.querySelector('p').innerHTML = 'Authentication successful! Please close this tab manually or click the button below.';
+                                    }, 1000);
+                                } catch (e) {
+                                    // Show manual close button immediately
+                                    document.getElementById('countdown-container').style.display = 'none';
+                                    document.getElementById('manual-close').style.display = 'block';
+                                    document.querySelector('p').innerHTML = 'Authentication successful! Please close this tab manually.';
+                                }
                             }
                             
-                            // Auto close after 10 seconds
-                            setTimeout(() => {
-                                document.querySelector('.close-info').innerHTML = 'This window will close automatically in 3 seconds...';
-                                setTimeout(() => {
-                                    window.close();
-                                }, 3000);
-                            }, 7000);
+                            function updateCountdown() {
+                                countdownElement.textContent = countdown;
+                                if (countdown <= 0) {
+                                    tryCloseWindow();
+                                    return;
+                                }
+                                countdown--;
+                                setTimeout(updateCountdown, 1000);
+                            }
+                            
+                            // Start countdown immediately
+                            setTimeout(updateCountdown, 1000);
+                            
+                            // Also try to close when the page loses focus (user switches back to app)
+                            window.addEventListener('blur', () => {
+                                setTimeout(tryCloseWindow, 1000);
+                            });
                         </script>
                     </body>
                     </html>
@@ -543,22 +531,24 @@ async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result
                                 line-height: 1.6;
                             }
                             
-                            .btn {
-                                padding: 12px 24px;
-                                border-radius: 8px;
-                                font-size: 16px;
-                                font-weight: 600;
-                                text-decoration: none;
-                                cursor: pointer;
-                                transition: all 0.2s ease;
-                                border: none;
-                                background: #f3f4f6;
-                                color: #374151;
-                                border: 1px solid #d1d5db;
+                            .auto-close-info {
+                                margin-top: 32px;
+                                padding: 20px;
+                                background: #fef2f2;
+                                border-radius: 12px;
+                                border: 1px solid #fecaca;
                             }
                             
-                            .btn:hover {
-                                background: #e5e7eb;
+                            .countdown {
+                                font-size: 18px;
+                                font-weight: 600;
+                                color: #991b1b;
+                                text-align: center;
+                            }
+                            
+                            #countdown {
+                                color: #dc2626;
+                                font-size: 24px;
                             }
                         </style>
                     </head>
@@ -573,9 +563,52 @@ async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result
                             <h1>Authentication Failed</h1>
                             <p>There was an error during the authentication process. Please return to the desktop application and try again.</p>
                             
-                            <button class="btn" onclick="window.close()">
-                                Close This Window
-                            </button>
+                            <div class="auto-close-info">
+                                <div class="countdown" id="countdown-container">
+                                    Closing in <span id="countdown">5</span> seconds...
+                                </div>
+                                <button id="manual-close" onclick="tryCloseWindow()" style="display: none; margin-top: 16px; padding: 8px 16px; border: none; background: #dc2626; color: white; border-radius: 6px; cursor: pointer;">
+                                    Close This Tab
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            let countdown = 5;
+                            const countdownElement = document.getElementById('countdown');
+                            
+                            function tryCloseWindow() {
+                                try {
+                                    window.close();
+                                    setTimeout(() => {
+                                        document.getElementById('countdown-container').style.display = 'none';
+                                        document.getElementById('manual-close').style.display = 'block';
+                                        document.querySelector('p').innerHTML = 'Authentication failed. Please close this tab manually or click the button below.';
+                                    }, 1000);
+                                } catch (e) {
+                                    document.getElementById('countdown-container').style.display = 'none';
+                                    document.getElementById('manual-close').style.display = 'block';
+                                    document.querySelector('p').innerHTML = 'Authentication failed. Please close this tab manually.';
+                                }
+                            }
+                            
+                            function updateCountdown() {
+                                countdownElement.textContent = countdown;
+                                if (countdown <= 0) {
+                                    tryCloseWindow();
+                                    return;
+                                }
+                                countdown--;
+                                setTimeout(updateCountdown, 1000);
+                            }
+                            
+                            // Start countdown immediately
+                            setTimeout(updateCountdown, 1000);
+                            
+                            window.addEventListener('blur', () => {
+                                setTimeout(tryCloseWindow, 1000);
+                            });
+                        </script>
                         </div>
                     </body>
                     </html>
@@ -649,22 +682,24 @@ async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result
                                 line-height: 1.6;
                             }
                             
-                            .btn {
-                                padding: 12px 24px;
-                                border-radius: 8px;
-                                font-size: 16px;
-                                font-weight: 600;
-                                text-decoration: none;
-                                cursor: pointer;
-                                transition: all 0.2s ease;
-                                border: none;
-                                background: #f3f4f6;
-                                color: #374151;
-                                border: 1px solid #d1d5db;
+                            .auto-close-info {
+                                margin-top: 32px;
+                                padding: 20px;
+                                background: #fffbeb;
+                                border-radius: 12px;
+                                border: 1px solid #fed7aa;
                             }
                             
-                            .btn:hover {
-                                background: #e5e7eb;
+                            .countdown {
+                                font-size: 18px;
+                                font-weight: 600;
+                                color: #92400e;
+                                text-align: center;
+                            }
+                            
+                            #countdown {
+                                color: #d97706;
+                                font-size: 24px;
                             }
                         </style>
                     </head>
@@ -679,9 +714,52 @@ async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result
                             <h1>Invalid Callback</h1>
                             <p>No authorization code was received. Please return to the desktop application and try the authentication process again.</p>
                             
-                            <button class="btn" onclick="window.close()">
-                                Close This Window
-                            </button>
+                            <div class="auto-close-info">
+                                <div class="countdown" id="countdown-container">
+                                    Closing in <span id="countdown">5</span> seconds...
+                                </div>
+                                <button id="manual-close" onclick="tryCloseWindow()" style="display: none; margin-top: 16px; padding: 8px 16px; border: none; background: #d97706; color: white; border-radius: 6px; cursor: pointer;">
+                                    Close This Tab
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            let countdown = 5;
+                            const countdownElement = document.getElementById('countdown');
+                            
+                            function tryCloseWindow() {
+                                try {
+                                    window.close();
+                                    setTimeout(() => {
+                                        document.getElementById('countdown-container').style.display = 'none';
+                                        document.getElementById('manual-close').style.display = 'block';
+                                        document.querySelector('p').innerHTML = 'Invalid callback received. Please close this tab manually or click the button below.';
+                                    }, 1000);
+                                } catch (e) {
+                                    document.getElementById('countdown-container').style.display = 'none';
+                                    document.getElementById('manual-close').style.display = 'block';
+                                    document.querySelector('p').innerHTML = 'Invalid callback received. Please close this tab manually.';
+                                }
+                            }
+                            
+                            function updateCountdown() {
+                                countdownElement.textContent = countdown;
+                                if (countdown <= 0) {
+                                    tryCloseWindow();
+                                    return;
+                                }
+                                countdown--;
+                                setTimeout(updateCountdown, 1000);
+                            }
+                            
+                            // Start countdown immediately
+                            setTimeout(updateCountdown, 1000);
+                            
+                            window.addEventListener('blur', () => {
+                                setTimeout(tryCloseWindow, 1000);
+                            });
+                        </script>
                         </div>
                     </body>
                     </html>
@@ -722,8 +800,8 @@ async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result
                  Err(_) => Err("Failed to receive OAuth callback".to_string())
              }
          }
-        _ = tokio::time::sleep(std::time::Duration::from_secs(300)) => {
-            log::warn!("OAuth callback server timed out after 5 minutes");
+                 _ = tokio::time::sleep(std::time::Duration::from_secs(CONFIG.oauth.timeout_seconds)) => {
+                         log::warn!("OAuth callback server timed out after {} seconds", CONFIG.oauth.timeout_seconds);
             Err("Authentication timed out".to_string())
         }
     }
@@ -739,11 +817,12 @@ pub async fn start_login_flow(app: AppHandle) -> Result<(), String> {
     *OAUTH_STATE.lock().unwrap() = Some(state);
     
     // Start the callback server first to get the port
-    let port = find_available_port(8080).ok_or_else(|| "No available port found".to_string())?;
-    let redirect_uri = format!("http://localhost:{}/auth/callback", port);
+    let port = find_available_port(CONFIG.oauth.callback_port_start).ok_or_else(|| "No available port found".to_string())?;
+    let redirect_uri = CONFIG.oauth_callback_url(port);
     
     let client = http_client::get_client();
-    let auth_url_endpoint = format!("http://localhost:5000/api/v1/auth/google/login?redirect_uri={}", 
+    let auth_url_endpoint = format!("{}?redirect_uri={}", 
+        CONFIG.google_login_url(),
         url::form_urlencoded::byte_serialize(redirect_uri.as_bytes()).collect::<String>());
 
     let res = client
@@ -767,7 +846,15 @@ pub async fn start_login_flow(app: AppHandle) -> Result<(), String> {
     })?;
 
     log::info!("Opening browser for Google authentication");
-    app.opener().open_url(auth_response.url, None::<String>).map_err(|e| {
+    
+    // Try to open URL in a way that's more conducive to auto-closing
+    let enhanced_url = if auth_response.url.contains('?') {
+        format!("{}&display=popup", auth_response.url)
+    } else {
+        format!("{}?display=popup", auth_response.url)
+    };
+    
+    app.opener().open_url(enhanced_url, None::<String>).map_err(|e| {
         log::error!("Failed to open browser: {}", e);
         e.to_string()
     })?;
@@ -784,7 +871,7 @@ pub async fn start_login_flow(app: AppHandle) -> Result<(), String> {
 /// Finalizes the SSO login after the OAuth callback using token exchange
 pub async fn handle_sso_finalization(app: AppHandle, code: String, server_port: u16) -> Result<(), String> {
     log::info!("Finalizing SSO login with token exchange");
-    let server_id = "backend_v1".to_string();
+    let server_id = CONFIG.server.default_server_id.clone();
 
     // Clear the stored state
     let _state = OAUTH_STATE.lock().unwrap().take();
@@ -794,12 +881,12 @@ pub async fn handle_sso_finalization(app: AppHandle, code: String, server_port: 
         code,
         code_verifier: String::new(), // Not using PKCE
         provider: "google-oauth2".to_string(),
-        tauri_redirect_uri: format!("http://localhost:{}/auth/callback", server_port),
+        tauri_redirect_uri: CONFIG.oauth_callback_url(server_port),
     };
 
     log::info!("Exchanging OAuth code for tokens");
     let res = client
-        .post("http://localhost:5000/api/v1/auth/token/exchange")
+        .post(&CONFIG.token_exchange_url())
         .json(&exchange_request)
         .send()
         .await
@@ -881,7 +968,7 @@ pub async fn handle_sso_finalization(app: AppHandle, code: String, server_port: 
 #[tauri::command]
 pub async fn check_login(app: AppHandle) -> Result<bool, String> {
     log::info!("Checking login status");
-    let server_id = "backend_v1".to_string();
+    let server_id = CONFIG.server.default_server_id.clone();
 
     if has_access_token(&server_id) {
         // We have a token, verify it's still valid by making a profile request
@@ -907,7 +994,7 @@ pub async fn check_login(app: AppHandle) -> Result<bool, String> {
 #[tauri::command]
 pub async fn get_profile(_app: AppHandle) -> Result<UserProfile, String> {
     log::info!("Getting user profile via Tauri command");
-    let server_id = "backend_v1".to_string();
+    let server_id = CONFIG.server.default_server_id.clone();
     
     match get_user_profile(&server_id).await {
         Ok(profile) => {
@@ -925,7 +1012,7 @@ pub async fn get_profile(_app: AppHandle) -> Result<UserProfile, String> {
 #[tauri::command]
 pub async fn logout(app: AppHandle) -> Result<(), String> {
     log::info!("Logging out user");
-    let server_id = "backend_v1".to_string();
+    let server_id = CONFIG.server.default_server_id.clone();
     
     remove_access_token(&server_id);
     persist_servers_token(&app).await.map_err(|e| e.to_string())?;

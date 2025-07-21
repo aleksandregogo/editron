@@ -1,6 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
 mod auth;
+mod config;
 mod http_client;
 
 use tauri::RunEvent;
