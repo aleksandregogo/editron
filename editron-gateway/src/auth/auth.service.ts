@@ -45,7 +45,7 @@ export class AuthService {
   async exchangeCodeForTokens(
     provider: AuthProvider,
     code: string,
-    codeVerifier: string,
+    codeVerifier: string, // Not used, kept for API compatibility
     tauriRedirectUri: string,
   ): Promise<TokenResponse> {
     this.logger.log(`Exchanging code for provider ${provider}`);
@@ -59,10 +59,17 @@ export class AuthService {
       client_id: providerConfig.clientId,
       client_secret: providerConfig.clientSecret,
       code: code,
-      code_verifier: codeVerifier,
       grant_type: 'authorization_code',
       redirect_uri: tauriRedirectUri,
     });
+
+    // Add debugging
+    this.logger.debug(`Token exchange payload: ${JSON.stringify({
+      client_id: providerConfig.clientId,
+      code: code.substring(0, 10) + '...',
+      grant_type: 'authorization_code',
+      redirect_uri: tauriRedirectUri,
+    })}`);
 
     let providerTokens: ProviderTokenResponse;
 
@@ -80,6 +87,9 @@ export class AuthService {
       this.logger.log(`Successfully received tokens from ${provider}`);
     } catch (error) {
       this.logger.error(`Failed to exchange code with ${provider}: ${error.message}`);
+      if (error.response?.data) {
+        this.logger.error(`Google error response: ${JSON.stringify(error.response.data)}`);
+      }
       throw new UnauthorizedException(`Failed to authenticate with ${provider}`);
     }
 
@@ -174,36 +184,21 @@ export class AuthService {
     return null;
   }
 
-  generateJwt(
-    user: User,
-    authProvider: AuthProvider,
-    userProviderId: string
-  ): string {
-    const payload = {
-      userProviderId: userProviderId,
-      userLocalId: user.id,
-      email: user.email,
-      name: user.name,
-      authProvider
-    } as UserInfo;
-
-    return this.jwtService.sign(payload);
-  }
-
   verifyJwt(token: string): UserInfo {
     return this.jwtService.verify(token);
   }
 
-  generateGoogleAuthUrl(): string {
+  generateGoogleAuthUrl(customRedirectUri?: string): string {
     const clientId = this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID');
-    const redirectUri = this.configService.get<string>('GOOGLE_CALLBACK_URL') || 'http://localhost:5000/api/v1/auth/google/callback';
+    const redirectUri = customRedirectUri || 'http://localhost:8080/auth/callback'; // Use custom or default
     const scope = 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
     
-    // Generate state and code challenge for PKCE (these would be stored temporarily)
+    // Generate state for OAuth security
     const state = Math.random().toString(36).substring(2, 15);
     
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&access_type=offline`;
     
+    this.logger.debug(`Generated OAuth URL with redirect URI: ${redirectUri}`);
     return url;
   }
 } 

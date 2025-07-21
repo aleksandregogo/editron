@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  db:
+    image: pgvector/pgvector:pg15
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: kukumala
+      POSTGRES_PASSWORD: abduljabarkhani
+      POSTGRES_DB: editron
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - socket-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kukumala -d editron"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile.backend
+    command: npm run start:dev
+    ports:
+      - "5000:5000"
+    networks:
+      - socket-network
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: kukumala
+      DB_PASSWORD: abduljabarkhani
+      DB_NAME: editron
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  socket-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

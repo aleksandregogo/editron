@@ -3,9 +3,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Mutex;
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_store::StoreExt;
 use tauri_plugin_opener::OpenerExt;
+use warp::Filter;
+use tokio::sync::oneshot;
+use url;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Server {
@@ -27,7 +31,9 @@ pub struct UserProfile {
     pub id: i32,
     pub email: String,
     pub name: String,
+    #[serde(rename = "profilePicture")]
     pub profile_picture: Option<String>,
+    #[serde(rename = "authProvider")]
     pub auth_provider: String,
 }
 
@@ -68,7 +74,7 @@ impl ServerAccessToken {
 lazy_static::lazy_static! {
     static ref SERVERS: Mutex<Vec<Server>> = Mutex::new(vec![]);
     static ref ACCESS_TOKENS: Mutex<HashMap<String, ServerAccessToken>> = Mutex::new(HashMap::new());
-    static ref PKCE_VERIFIER: Mutex<Option<String>> = Mutex::new(None);
+    static ref OAUTH_STATE: Mutex<Option<String>> = Mutex::new(None);
 }
 
 /// Gets a server by ID from the global state
@@ -96,6 +102,22 @@ pub fn remove_access_token(server_id: &str) {
     ACCESS_TOKENS.lock().unwrap().remove(server_id);
 }
 
+/// Initialize the stores during app setup
+pub fn initialize_stores(app: &AppHandle) -> Result<(), Box<dyn Error>> {
+    use tauri_plugin_store::StoreBuilder;
+    
+    // Create servers store
+    let _servers_store = StoreBuilder::new(app, "servers.json")
+        .build()?;
+    
+    // Create tokens store  
+    let _tokens_store = StoreBuilder::new(app, "tokens.json")
+        .build()?;
+    
+    log::info!("Stores initialized successfully");
+    Ok(())
+}
+
 /// Checks if a server has a valid access token
 pub fn has_access_token(server_id: &str) -> bool {
     ACCESS_TOKENS.lock().unwrap().contains_key(server_id)
@@ -105,7 +127,7 @@ pub fn has_access_token(server_id: &str) -> bool {
 pub async fn persist_servers(app: &AppHandle) -> Result<(), Box<dyn Error>> {
     let store = app
         .get_store("servers.json")
-        .ok_or_else(|| "Could not get servers store")?;
+        .ok_or_else(|| "Could not get servers store - store not initialized")?;
     let servers = SERVERS.lock().unwrap().clone();
     store.set("servers".to_string(), serde_json::to_value(servers)?);
     store.save()?;
@@ -117,7 +139,7 @@ pub async fn persist_servers(app: &AppHandle) -> Result<(), Box<dyn Error>> {
 pub async fn persist_servers_token(app: &AppHandle) -> Result<(), Box<dyn Error>> {
     let store = app
         .get_store("tokens.json")
-        .ok_or_else(|| "Could not get tokens store")?;
+        .ok_or_else(|| "Could not get tokens store - store not initialized")?;
     let tokens = ACCESS_TOKENS.lock().unwrap().clone();
     store.set("tokens".to_string(), serde_json::to_value(tokens)?);
     store.save()?;
@@ -129,11 +151,13 @@ pub async fn persist_servers_token(app: &AppHandle) -> Result<(), Box<dyn Error>
 pub fn load_servers(app: &AppHandle) -> Result<(), Box<dyn Error>> {
     let store = app
         .get_store("servers.json")
-        .ok_or_else(|| "Could not get servers store")?;
+        .ok_or_else(|| "Could not get servers store - store not initialized")?;
     if let Some(v) = store.get("servers") {
         let loaded: Vec<Server> = serde_json::from_value(v.clone())?;
         *SERVERS.lock().unwrap() = loaded;
         log::info!("Servers loaded from storage");
+    } else {
+        log::info!("No servers found in storage - starting fresh");
     }
     Ok(())
 }
@@ -142,31 +166,36 @@ pub fn load_servers(app: &AppHandle) -> Result<(), Box<dyn Error>> {
 pub fn load_servers_token(app: &AppHandle) -> Result<(), Box<dyn Error>> {
     let store = app
         .get_store("tokens.json")
-        .ok_or_else(|| "Could not get tokens store")?;
+        .ok_or_else(|| "Could not get tokens store - store not initialized")?;
     if let Some(v) = store.get("tokens") {
         let loaded: HashMap<String, ServerAccessToken> = serde_json::from_value(v.clone())?;
         *ACCESS_TOKENS.lock().unwrap() = loaded;
         log::info!("Access tokens loaded from storage");
+    } else {
+        log::info!("No tokens found in storage - starting fresh");
     }
     Ok(())
 }
 
-/// Generate PKCE code verifier and challenge
-fn generate_pkce_pair() -> (String, String) {
+/// Generate a random state parameter for OAuth security
+fn generate_state() -> String {
     use base64::{engine::general_purpose, Engine as _};
-    use sha2::{Digest, Sha256};
     
-    // Generate code verifier
-    let verifier = general_purpose::URL_SAFE_NO_PAD.encode(
+    general_purpose::URL_SAFE_NO_PAD.encode(
         (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>()
-    );
+    )
+}
+
+/// Find an available port starting from the given port
+fn find_available_port(start_port: u16) -> Option<u16> {
+    use std::net::TcpListener;
     
-    // Generate code challenge
-    let mut hasher = Sha256::new();
-    hasher.update(verifier.as_bytes());
-    let challenge = general_purpose::URL_SAFE_NO_PAD.encode(hasher.finalize());
-    
-    (verifier, challenge)
+    for port in start_port..start_port + 100 {
+        if TcpListener::bind(("127.0.0.1", port)).is_ok() {
+            return Some(port);
+        }
+    }
+    None
 }
 
 /// Gets user profile from the backend using JWT token
@@ -194,11 +223,21 @@ async fn get_user_profile(server_id: &str) -> Result<UserProfile, String> {
         })?;
 
     if res.status().is_success() {
-        let profile: UserProfile = res.json().await.map_err(|e| {
-            log::error!("Error parsing profile response: {}", e);
+        // Debug: log the raw response
+        let response_text = res.text().await.map_err(|e| {
+            log::error!("Error reading response text: {}", e);
             e.to_string()
         })?;
-        log::info!("Successfully fetched user profile");
+        
+        log::debug!("Profile response from backend: {}", response_text);
+        
+        let profile: UserProfile = serde_json::from_str(&response_text).map_err(|e| {
+            log::error!("Error parsing profile JSON: {}", e);
+            log::error!("Raw response was: {}", response_text);
+            e.to_string()
+        })?;
+        
+        log::info!("Successfully fetched user profile: {:?}", profile);
         Ok(profile)
     } else if res.status() == reqwest::StatusCode::UNAUTHORIZED {
         log::warn!("Profile request returned 401 Unauthorized - token expired");
@@ -210,20 +249,505 @@ async fn get_user_profile(server_id: &str) -> Result<UserProfile, String> {
     }
 }
 
+/// Start a temporary HTTP server to catch OAuth callback
+async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result<String, String> {
+    log::info!("Starting OAuth callback server on port {}", port);
+    
+    let (tx, rx) = oneshot::channel::<String>();
+    let tx = Arc::new(Mutex::new(Some(tx)));
+    let shutdown_tx = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
+
+    // Clone shutdown_tx before moving into closure
+    let shutdown_tx_clone = shutdown_tx.clone();
+    
+    // Create a warp filter to handle the OAuth callback
+    let callback_route = warp::path!("auth" / "callback")
+        .and(warp::query::<HashMap<String, String>>())
+        .and(warp::any().map(move || tx.clone()))
+        .and(warp::any().map(move || app_handle.clone()))
+        .and(warp::any().map(move || shutdown_tx_clone.clone()))
+        .and_then(|query_params: HashMap<String, String>, tx: Arc<Mutex<Option<oneshot::Sender<String>>>>, _app: AppHandle, shutdown_tx: Arc<Mutex<Option<oneshot::Sender<()>>>>| async move {
+            log::info!("OAuth callback received");
+            
+            if let Some(code) = query_params.get("code") {
+                log::info!("Authorization code received: {}", &code[..10.min(code.len())]);
+                
+                // Send the code through the channel
+                if let Some(sender) = tx.lock().unwrap().take() {
+                    let _ = sender.send(code.clone());
+                }
+                
+                // Schedule server shutdown after response
+                if let Some(shutdown_sender) = shutdown_tx.lock().unwrap().take() {
+                    tokio::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        let _ = shutdown_sender.send(());
+                    });
+                }
+                
+                // Return a success page
+                Ok::<warp::reply::Html<&str>, warp::Rejection>(warp::reply::html(
+                    r#"
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Authentication Successful - Editron</title>
+                        <style>
+                            * {
+                                margin: 0;
+                                padding: 0;
+                                box-sizing: border-box;
+                            }
+                            
+                            body {
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                min-height: 100vh;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                padding: 20px;
+                            }
+                            
+                            .container {
+                                background: white;
+                                padding: 48px;
+                                border-radius: 16px;
+                                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                                text-align: center;
+                                max-width: 500px;
+                                width: 100%;
+                            }
+                            
+                            .success-icon {
+                                width: 80px;
+                                height: 80px;
+                                margin: 0 auto 24px;
+                                background: #10b981;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                animation: pulse 2s infinite;
+                            }
+                            
+                            @keyframes pulse {
+                                0% { transform: scale(1); }
+                                50% { transform: scale(1.05); }
+                                100% { transform: scale(1); }
+                            }
+                            
+                            .success-icon svg {
+                                width: 40px;
+                                height: 40px;
+                                fill: white;
+                            }
+                            
+                            h1 {
+                                font-size: 2rem;
+                                font-weight: 700;
+                                color: #1f2937;
+                                margin-bottom: 16px;
+                            }
+                            
+                            p {
+                                color: #6b7280;
+                                font-size: 1.1rem;
+                                margin-bottom: 32px;
+                                line-height: 1.6;
+                            }
+                            
+                            .actions {
+                                display: flex;
+                                flex-direction: column;
+                                gap: 16px;
+                            }
+                            
+                            .btn {
+                                padding: 12px 24px;
+                                border-radius: 8px;
+                                font-size: 16px;
+                                font-weight: 600;
+                                text-decoration: none;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                                border: none;
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 8px;
+                            }
+                            
+                            .btn-primary {
+                                background: #4f46e5;
+                                color: white;
+                            }
+                            
+                            .btn-primary:hover {
+                                background: #4338ca;
+                                transform: translateY(-1px);
+                                box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+                            }
+                            
+                            .btn-secondary {
+                                background: #f3f4f6;
+                                color: #374151;
+                                border: 1px solid #d1d5db;
+                            }
+                            
+                            .btn-secondary:hover {
+                                background: #e5e7eb;
+                            }
+                            
+                            .close-info {
+                                margin-top: 24px;
+                                padding-top: 24px;
+                                border-top: 1px solid #e5e7eb;
+                                color: #9ca3af;
+                                font-size: 14px;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="success-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            
+                            <h1>Authentication Successful!</h1>
+                            <p>You have successfully signed in to Editron. Return to the desktop application to continue.</p>
+                            
+                            <div class="actions">
+                                <button class="btn btn-primary" onclick="openDesktopApp()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M13 3L4 14h6v7l9-11h-6V3z"/>
+                                    </svg>
+                                    Open Editron App
+                                </button>
+                                <button class="btn btn-secondary" onclick="window.close()">
+                                    Close This Window
+                                </button>
+                            </div>
+                            
+                            <div class="close-info">
+                                You can safely close this browser window
+                            </div>
+                        </div>
+                        
+                        <script>
+                            function openDesktopApp() {
+                                // Try to focus the desktop app window
+                                window.location.href = 'editron-app://focus';
+                                
+                                // Also close this window after a short delay
+                                setTimeout(() => {
+                                    window.close();
+                                }, 1000);
+                            }
+                            
+                            // Auto close after 10 seconds
+                            setTimeout(() => {
+                                document.querySelector('.close-info').innerHTML = 'This window will close automatically in 3 seconds...';
+                                setTimeout(() => {
+                                    window.close();
+                                }, 3000);
+                            }, 7000);
+                        </script>
+                    </body>
+                    </html>
+                    "#
+                ))
+            } else if let Some(error) = query_params.get("error") {
+                log::error!("OAuth error received: {}", error);
+                
+                // Send error through the channel
+                if let Some(sender) = tx.lock().unwrap().take() {
+                    let _ = sender.send(format!("error:{}", error));
+                }
+                
+                // Schedule server shutdown after response
+                if let Some(shutdown_sender) = shutdown_tx.lock().unwrap().take() {
+                    tokio::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        let _ = shutdown_sender.send(());
+                    });
+                }
+                
+                Ok::<warp::reply::Html<&str>, warp::Rejection>(warp::reply::html(
+                    r#"
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Authentication Failed - Editron</title>
+                        <style>
+                            * {
+                                margin: 0;
+                                padding: 0;
+                                box-sizing: border-box;
+                            }
+                            
+                            body {
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+                                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                                min-height: 100vh;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                padding: 20px;
+                            }
+                            
+                            .container {
+                                background: white;
+                                padding: 48px;
+                                border-radius: 16px;
+                                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                                text-align: center;
+                                max-width: 500px;
+                                width: 100%;
+                            }
+                            
+                            .error-icon {
+                                width: 80px;
+                                height: 80px;
+                                margin: 0 auto 24px;
+                                background: #ef4444;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            
+                            .error-icon svg {
+                                width: 40px;
+                                height: 40px;
+                                fill: white;
+                            }
+                            
+                            h1 {
+                                font-size: 2rem;
+                                font-weight: 700;
+                                color: #1f2937;
+                                margin-bottom: 16px;
+                            }
+                            
+                            p {
+                                color: #6b7280;
+                                font-size: 1.1rem;
+                                margin-bottom: 32px;
+                                line-height: 1.6;
+                            }
+                            
+                            .btn {
+                                padding: 12px 24px;
+                                border-radius: 8px;
+                                font-size: 16px;
+                                font-weight: 600;
+                                text-decoration: none;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                                border: none;
+                                background: #f3f4f6;
+                                color: #374151;
+                                border: 1px solid #d1d5db;
+                            }
+                            
+                            .btn:hover {
+                                background: #e5e7eb;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="error-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            
+                            <h1>Authentication Failed</h1>
+                            <p>There was an error during the authentication process. Please return to the desktop application and try again.</p>
+                            
+                            <button class="btn" onclick="window.close()">
+                                Close This Window
+                            </button>
+                        </div>
+                    </body>
+                    </html>
+                    "#
+                ))
+            } else {
+                log::warn!("OAuth callback received without code or error");
+                Ok::<warp::reply::Html<&str>, warp::Rejection>(warp::reply::html(
+                    r#"
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Invalid Callback - Editron</title>
+                        <style>
+                            * {
+                                margin: 0;
+                                padding: 0;
+                                box-sizing: border-box;
+                            }
+                            
+                            body {
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+                                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                                min-height: 100vh;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                padding: 20px;
+                            }
+                            
+                            .container {
+                                background: white;
+                                padding: 48px;
+                                border-radius: 16px;
+                                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                                text-align: center;
+                                max-width: 500px;
+                                width: 100%;
+                            }
+                            
+                            .warning-icon {
+                                width: 80px;
+                                height: 80px;
+                                margin: 0 auto 24px;
+                                background: #f59e0b;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            
+                            .warning-icon svg {
+                                width: 40px;
+                                height: 40px;
+                                fill: white;
+                            }
+                            
+                            h1 {
+                                font-size: 2rem;
+                                font-weight: 700;
+                                color: #1f2937;
+                                margin-bottom: 16px;
+                            }
+                            
+                            p {
+                                color: #6b7280;
+                                font-size: 1.1rem;
+                                margin-bottom: 32px;
+                                line-height: 1.6;
+                            }
+                            
+                            .btn {
+                                padding: 12px 24px;
+                                border-radius: 8px;
+                                font-size: 16px;
+                                font-weight: 600;
+                                text-decoration: none;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                                border: none;
+                                background: #f3f4f6;
+                                color: #374151;
+                                border: 1px solid #d1d5db;
+                            }
+                            
+                            .btn:hover {
+                                background: #e5e7eb;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="warning-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                            </div>
+                            
+                            <h1>Invalid Callback</h1>
+                            <p>No authorization code was received. Please return to the desktop application and try the authentication process again.</p>
+                            
+                            <button class="btn" onclick="window.close()">
+                                Close This Window
+                            </button>
+                        </div>
+                    </body>
+                    </html>
+                    "#
+                ))
+            }
+        });
+
+    let routes = callback_route.with(warp::log("oauth_callback"));
+    
+    // Create shutdown channel
+    let (shutdown_tx_main, shutdown_rx) = oneshot::channel::<()>();
+    *shutdown_tx.lock().unwrap() = Some(shutdown_tx_main);
+    
+    // Start the server with graceful shutdown
+    let (addr, server) = warp::serve(routes)
+        .bind_with_graceful_shutdown(([127, 0, 0, 1], port), async {
+            shutdown_rx.await.ok();
+            log::info!("OAuth callback server shutting down");
+        });
+    
+    // Spawn the server in a separate task
+    let server_handle = tokio::spawn(server);
+    
+    log::info!("OAuth callback server started on http://localhost:{}", addr.port());
+    
+    // Update the redirect URI to use the actual port
+    tokio::select! {
+                 result = rx => {
+             match result {
+                 Ok(auth_result) => {
+                     if auth_result.starts_with("error:") {
+                         Err(auth_result.replace("error:", ""))
+                     } else {
+                         Ok(auth_result)
+                     }
+                 }
+                 Err(_) => Err("Failed to receive OAuth callback".to_string())
+             }
+         }
+        _ = tokio::time::sleep(std::time::Duration::from_secs(300)) => {
+            log::warn!("OAuth callback server timed out after 5 minutes");
+            Err("Authentication timed out".to_string())
+        }
+    }
+}
+
 /// Tauri command to start the Google OAuth login flow
 #[tauri::command]
 pub async fn start_login_flow(app: AppHandle) -> Result<(), String> {
     log::info!("Starting Google OAuth login flow");
     
-    // Generate PKCE pair
-    let (verifier, _challenge) = generate_pkce_pair();
-    *PKCE_VERIFIER.lock().unwrap() = Some(verifier);
+    // Generate state for OAuth security
+    let state = generate_state();
+    *OAUTH_STATE.lock().unwrap() = Some(state);
+    
+    // Start the callback server first to get the port
+    let port = find_available_port(8080).ok_or_else(|| "No available port found".to_string())?;
+    let redirect_uri = format!("http://localhost:{}/auth/callback", port);
     
     let client = http_client::get_client();
-    let auth_url_endpoint = "http://localhost:5000/api/v1/auth/google/login";
+    let auth_url_endpoint = format!("http://localhost:5000/api/v1/auth/google/login?redirect_uri={}", 
+        url::form_urlencoded::byte_serialize(redirect_uri.as_bytes()).collect::<String>());
 
     let res = client
-        .get(auth_url_endpoint)
+        .get(&auth_url_endpoint)
         .send()
         .await
         .map_err(|e| {
@@ -248,23 +772,29 @@ pub async fn start_login_flow(app: AppHandle) -> Result<(), String> {
         e.to_string()
     })?;
 
+    // Start the callback server and wait for the authorization code
+    let auth_code = start_oauth_callback_server(app.clone(), port).await?;
+    
+    // Exchange the code for tokens
+    handle_sso_finalization(app, auth_code, port).await?;
+
     Ok(())
 }
 
 /// Finalizes the SSO login after the OAuth callback using token exchange
-pub async fn handle_sso_finalization(app: AppHandle, code: String) -> Result<(), String> {
+pub async fn handle_sso_finalization(app: AppHandle, code: String, server_port: u16) -> Result<(), String> {
     log::info!("Finalizing SSO login with token exchange");
     let server_id = "backend_v1".to_string();
 
-    let verifier = PKCE_VERIFIER.lock().unwrap().take()
-        .ok_or_else(|| "PKCE verifier not found".to_string())?;
+    // Clear the stored state
+    let _state = OAUTH_STATE.lock().unwrap().take();
 
     let client = http_client::get_client();
     let exchange_request = TokenExchangeRequest {
         code,
-        code_verifier: verifier,
+        code_verifier: String::new(), // Not using PKCE
         provider: "google-oauth2".to_string(),
-        tauri_redirect_uri: "editron-app://auth/callback".to_string(),
+        tauri_redirect_uri: format!("http://localhost:{}/auth/callback", server_port),
     };
 
     log::info!("Exchanging OAuth code for tokens");
@@ -376,9 +906,19 @@ pub async fn check_login(app: AppHandle) -> Result<bool, String> {
 /// Tauri command to get user profile
 #[tauri::command]
 pub async fn get_profile(_app: AppHandle) -> Result<UserProfile, String> {
-    log::info!("Getting user profile");
+    log::info!("Getting user profile via Tauri command");
     let server_id = "backend_v1".to_string();
-    get_user_profile(&server_id).await
+    
+    match get_user_profile(&server_id).await {
+        Ok(profile) => {
+            log::info!("Successfully got profile in Tauri command: {:?}", profile);
+            Ok(profile)
+        }
+        Err(e) => {
+            log::error!("Failed to get profile in Tauri command: {}", e);
+            Err(e)
+        }
+    }
 }
 
 /// Tauri command to logout user

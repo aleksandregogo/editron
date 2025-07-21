@@ -96,3 +96,72 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+# Editron Gateway
+
+NestJS backend for Editron application.
+
+## Environment Configuration
+
+Create a `.env` file in the root directory with the following variables:
+
+```bash
+# Database Configuration (PostgreSQL)
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=your_password_here
+DB_NAME=editron
+
+# JWT Configuration
+JWT_SECRET=your_jwt_secret_here
+JWT_EXPIRES_IN=1d
+JWT_REFRESH_SECRET=your_jwt_refresh_secret_here
+JWT_REFRESH_EXPIRES_IN=7d
+
+# Google OAuth Configuration (Desktop App)
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+
+# Environment
+NODE_ENV=development
+```
+
+## Database Setup
+
+1. Install PostgreSQL on your system
+2. Create a database named `editron` (or use the name you set in `DB_NAME`)
+3. Update the environment variables with your PostgreSQL credentials
+4. Run the application - TypeORM will automatically create the tables in development mode
+
+## Installation
+
+```bash
+$ npm install
+```
+
+## Running the app
+
+```bash
+# development
+$ npm run start
+
+# watch mode
+$ npm run start:dev
+
+# production mode
+$ npm run start:prod
+```
+
+## Test
+
+```bash
+# unit tests
+$ npm test
+
+# e2e tests
+$ npm run test:e2e
+
+# test coverage
+$ npm run test:cov
+```

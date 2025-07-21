@@ -1,14 +1,20 @@
 import { useState, useEffect } from "react";
-import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import "./App.css";
 
+interface UserProfile {
+  id: number;
+  email: string;
+  name: string;
+  profilePicture?: string;
+  authProvider: string;
+}
+
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const checkInitialLogin = async () => {
@@ -16,23 +22,42 @@ function App() {
         const isLogged = await invoke<boolean>("check_login");
         setLoggedIn(isLogged);
         if (isLogged) {
-          const prof = await invoke<string>("get_profile");
-          setProfile(JSON.parse(prof));
+          console.log("🔍 DEBUG: Fetching profile from Tauri...");
+          const profileResponse = await invoke<UserProfile>("get_profile");
+          console.log("🔍 DEBUG: Profile response received:", profileResponse);
+          setProfile(profileResponse);
         }
       } catch (error) {
-        console.error(error);
+        console.error("Error checking login status:", error);
+        setLoggedIn(false);
+        setProfile(null);
+      } finally {
+        setLoading(false);
       }
     };
+    
     checkInitialLogin();
 
+    // Listen for authentication events
     const unlistenSuccess = listen("login_success", async () => {
-      setLoggedIn(true);
-      const prof = await invoke<string>("get_profile");
-      setProfile(JSON.parse(prof));
+      try {
+        setLoggedIn(true);
+        console.log("🔍 DEBUG: Login success, fetching profile...");
+        const profileResponse = await invoke<UserProfile>("get_profile");
+        console.log("🔍 DEBUG: Profile after login:", profileResponse);
+        setProfile(profileResponse);
+      } catch (error) {
+        console.error("Error getting profile after login:", error);
+      }
     });
 
     const unlistenFailed = listen("login_failed", (e) => {
-      console.error(e.payload);
+      console.error("Login failed:", e.payload);
+      setLoggedIn(false);
+      setProfile(null);
+    });
+
+    const unlistenLogout = listen("logout_success", () => {
       setLoggedIn(false);
       setProfile(null);
     });
@@ -40,61 +65,107 @@ function App() {
     return () => {
       unlistenSuccess.then(f => f());
       unlistenFailed.then(f => f());
+      unlistenLogout.then(f => f());
     };
   }, []);
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
 
   const handleLogin = async () => {
     try {
       await invoke("start_login_flow");
     } catch (error) {
-      console.error("Login failed", error);
+      console.error("Login failed:", error);
     }
   };
 
-  return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+  const handleLogout = async () => {
+    try {
+      await invoke("logout");
+      setLoggedIn(false);
+      setProfile(null);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading...</p>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+    );
+  }
 
-      {!loggedIn ? (
-        <button onClick={handleLogin}>Login with Google</button>
-      ) : (
-        <p>Logged in as {profile?.name}</p>
-      )}
+  if (!loggedIn) {
+    return (
+      <div className="login-container">
+        <div className="login-card">
+          <h1>Welcome to Editron</h1>
+          <p>Please sign in to continue</p>
+          <button onClick={handleLogin} className="login-button">
+            <svg viewBox="0 0 24 24" className="google-icon">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Sign in with Google
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+  return (
+    <div className="app-container">
+      <aside className="sidebar">
+        <div className="sidebar-header">
+          <div className="user-info">
+            {profile?.profilePicture ? (
+              <img 
+                src={profile.profilePicture} 
+                alt="Profile" 
+                className="profile-picture"
+              />
+            ) : (
+              <div className="profile-picture-placeholder">
+                {profile?.name?.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="user-details">
+              <h3>{profile?.name}</h3>
+              <p>{profile?.email}</p>
+            </div>
+          </div>
+        </div>
+        
+        <nav className="sidebar-nav">
+          <div className="nav-item active">
+            <span>Dashboard</span>
+          </div>
+        </nav>
+        
+        <div className="sidebar-footer">
+          <button onClick={handleLogout} className="logout-button">
+            <svg viewBox="0 0 24 24" className="logout-icon">
+              <path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </aside>
+      
+      <main className="main-content">
+        <div className="content-header">
+          <h1>Dashboard</h1>
+          <p>Welcome back, {profile?.name}!</p>
+        </div>
+        
+        <div className="content-body">
+          <p>Ready for your content here...</p>
+        </div>
+      </main>
+    </div>
   );
 }
 

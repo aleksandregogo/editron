@@ -21,13 +21,7 @@
       "csp": null
     }
   },
-  "plugins": {
-    "deep-link": {
-      "desktop": {
-        "schemes": ["editron-app"]
-      }
-    }
-  },
+
   "bundle": {
     "active": true,
     "targets": "all",

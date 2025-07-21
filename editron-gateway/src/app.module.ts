@@ -13,8 +13,12 @@ import { User } from './entities/user.entity';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        type: 'sqlite',
-        database: configService.get('DATABASE_PATH') || 'database.sqlite',
+        type: 'postgres',
+        host: configService.get('DB_HOST') || 'localhost',
+        port: configService.get('DB_PORT') || 5432,
+        username: configService.get('DB_USERNAME') || 'postgres',
+        password: configService.get('DB_PASSWORD') || 'password',
+        database: configService.get('DB_NAME') || 'editron',
         entities: [User],
         synchronize: process.env.NODE_ENV !== 'production', // Auto sync in development
         logging: process.env.NODE_ENV === 'development',
