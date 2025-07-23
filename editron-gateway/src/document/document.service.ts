@@ -45,14 +45,14 @@ export class DocumentService {
       throw new Error('Failed to parse document content.');
     }
 
-    // 3. Enqueue background job for S3/R2 upload
-    await this.documentQueue.add('process-document-source', {
+    // 3. Enqueue background job for indexing and R2 upload
+    await this.documentQueue.add('process-document-indexing', {
       documentId: doc.id,
       userId: user.id,
-      fileBuffer: Array.from(fileBuffer), // Convert to serializable format
+      fileBuffer: Array.from(fileBuffer),
       originalName,
     });
-    this.logger.log(`Enqueued job to upload source for document ${doc.uuid}`);
+    this.logger.log(`Enqueued indexing job for document ${doc.uuid}`);
 
     // 4. Return the processed document for immediate preview
     return doc;

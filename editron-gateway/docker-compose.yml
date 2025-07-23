@@ -51,6 +51,13 @@ services:
       DB_NAME: editron
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # Cloudflare AI Gateway Configuration (matching reference implementation)
+      CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID}
+      CLOUDFLARE_GATEWAY_TOKEN: ${CLOUDFLARE_GATEWAY_TOKEN}
+      CLOUDFLARE_WORKER_TOKEN: ${CLOUDFLARE_WORKER_TOKEN}
+      CLOUDFLARE_GATEWAY_SLUG: ${CLOUDFLARE_GATEWAY_SLUG:-editron-ai}
+      CLOUDFLARE_EMBEDDING_MODEL_ID: ${CLOUDFLARE_EMBEDDING_MODEL_ID}
+      CLOUDFLARE_LLM_MODEL_ID: ${CLOUDFLARE_LLM_MODEL_ID}
     volumes:
       - ./:/app
       - /app/node_modules

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ChatSidebar } from './Chat/ChatSidebar';
 import { apiClient } from '../utils/api';
 
 interface Document {
@@ -18,7 +19,6 @@ const Dashboard = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Directly fetch documents - CORS issues are now resolved
     fetchDocuments();
   }, []);
 
@@ -49,12 +49,11 @@ const Dashboard = () => {
       setIsUploading(false);
       navigate(`/editor/${newDoc.uuid}`);
     } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Upload failed. Please try again.');
+      console.error('Error uploading document:', error);
+      alert('Failed to upload document. Please try again.');
       setIsUploading(false);
     }
 
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -64,9 +63,7 @@ const Dashboard = () => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+      day: 'numeric'
     });
   };
 
@@ -74,7 +71,7 @@ const Dashboard = () => {
     const statusStyles = {
       PROCESSING: 'badge badge-warning',
       READY: 'badge badge-success',
-      ERROR: 'badge badge-error',
+      ERROR: 'badge badge-error'
     };
 
     return (
@@ -96,7 +93,17 @@ const Dashboard = () => {
   }
 
   return (
-    <div style={{ maxWidth: 'var(--max-content-width)', margin: '0 auto', padding: 'var(--space-6) var(--space-4)' }}>
+    <div 
+      className="dashboard-page"
+      style={{ 
+        maxWidth: 'var(--max-content-width)', 
+        margin: '0 auto', 
+        padding: 'var(--space-6) var(--space-4)',
+        // Add right margin to account for the fixed sidebar
+        marginRight: 'calc(25vw + 48px + var(--space-4))', // 25vw for expanded, 48px for minimized, plus original padding
+        transition: 'margin-right var(--transition-normal)',
+      }}
+    >
       <div className="card">
         <div className="card-header flex items-center justify-between">
           <h2 className="text-xl font-semibold text-primary">My Documents</h2>
@@ -174,6 +181,9 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Chat Sidebar - Fixed positioned (without document UUID for general mode) */}
+      <ChatSidebar />
     </div>
   );
 };

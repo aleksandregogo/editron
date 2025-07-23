@@ -109,6 +109,46 @@ class ApiClient {
       throw error;
     }
   }
+
+  // Chat API methods
+  async chatQuery(promptText: string, documentUuid?: string, mode: 'chat' | 'agent' = 'chat'): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+    try {
+      console.log(`[API] Starting chat query with documentUuid: ${documentUuid || 'none'}, mode: ${mode}`);
+      const headers = await this.getAuthHeaders();
+      
+      const response = await fetch(`${this.baseUrl}/api/v1/chat/query`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Accept': 'text/event-stream',
+        },
+        body: JSON.stringify({ 
+          promptText, 
+          mode,
+          ...(documentUuid && { documentUuid }) 
+        }),
+      });
+
+      console.log(`[API] Chat response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[API] ❌ Chat request failed: ${response.status} ${errorText}`);
+        throw new Error(`Chat request failed: ${response.status} ${errorText}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body reader available');
+      }
+
+      console.log('[API] ✅ Chat stream reader created');
+      return reader;
+    } catch (error) {
+      console.error('[API] ❌ Chat query failed:', error);
+      throw error;
+    }
+  }
 }
 
 export const apiClient = new ApiClient(); 

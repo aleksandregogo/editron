@@ -4,9 +4,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { DocumentModule } from './document/document.module';
+import { AiGatewayModule } from './ai-gateway/ai-gateway.module';
+import { IndexingModule } from './indexing/indexing.module';
+import { ChatModule } from './chat/chat.module';
 import { User } from './entities/user.entity';
 import { Document } from './entities/document.entity';
 import { UserFile } from './entities/user-file.entity';
+import { KnowledgeItem } from './entities/knowledge-item.entity';
 
 @Module({
   imports: [
@@ -22,8 +26,8 @@ import { UserFile } from './entities/user-file.entity';
         username: configService.get('DB_USERNAME') || 'postgres',
         password: configService.get('DB_PASSWORD') || 'password',
         database: configService.get('DB_NAME') || 'editron',
-        entities: [User, Document, UserFile],
-        synchronize: process.env.NODE_ENV !== 'production', // Auto sync in development
+        entities: [User, Document, UserFile, KnowledgeItem],
+        synchronize: process.env.NODE_ENV !== 'production',
         logging: process.env.NODE_ENV === 'development',
       }),
       inject: [ConfigService],
@@ -31,6 +35,9 @@ import { UserFile } from './entities/user-file.entity';
     AuthModule,
     UserModule,
     DocumentModule,
+    AiGatewayModule,
+    IndexingModule,
+    ChatModule,
   ],
   controllers: [],
   providers: [],
