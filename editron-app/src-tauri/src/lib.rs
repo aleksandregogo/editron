@@ -19,7 +19,8 @@ pub fn run() {
             auth::start_login_flow,
             auth::check_login,
             auth::get_profile,
-            auth::logout
+            auth::logout,
+            auth::get_access_token
         ])
         .setup(|app| {
             let handle = app.handle().clone();

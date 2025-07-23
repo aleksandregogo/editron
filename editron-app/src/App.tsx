@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import Layout from "./components/Layout";
+import Dashboard from "./components/Dashboard";
+import EditorPage from "./components/EditorPage";
+import "./styles/design-system.css";
 import "./App.css";
 
 interface UserProfile {
@@ -77,14 +82,9 @@ function App() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await invoke("logout");
-      setLoggedIn(false);
-      setProfile(null);
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+  const handleLogout = () => {
+    setLoggedIn(false);
+    setProfile(null);
   };
 
   if (loading) {
@@ -117,55 +117,17 @@ function App() {
   }
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="user-info">
-            {profile?.profilePicture ? (
-              <img 
-                src={profile.profilePicture} 
-                alt="Profile" 
-                className="profile-picture"
-              />
-            ) : (
-              <div className="profile-picture-placeholder">
-                {profile?.name?.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="user-details">
-              <h3>{profile?.name}</h3>
-              <p>{profile?.email}</p>
-            </div>
-          </div>
-        </div>
-        
-        <nav className="sidebar-nav">
-          <div className="nav-item active">
-            <span>Dashboard</span>
-          </div>
-        </nav>
-        
-        <div className="sidebar-footer">
-          <button onClick={handleLogout} className="logout-button">
-            <svg viewBox="0 0 24 24" className="logout-icon">
-              <path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
-            </svg>
-            Logout
-          </button>
-        </div>
-      </aside>
-      
-      <main className="main-content">
-        <div className="content-header">
-          <h1>Dashboard</h1>
-          <p>Welcome back, {profile?.name}!</p>
-        </div>
-        
-        <div className="content-body">
-          <p>Ready for your content here...</p>
-        </div>
-      </main>
-    </div>
+    <Router>
+      {profile && (
+        <Layout profile={profile} onLogout={handleLogout}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/editor/:uuid" element={<EditorPage />} />
+          </Routes>
+        </Layout>
+      )}
+    </Router>
   );
 }
 

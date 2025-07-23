@@ -3,7 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { DocumentModule } from './document/document.module';
 import { User } from './entities/user.entity';
+import { Document } from './entities/document.entity';
+import { UserFile } from './entities/user-file.entity';
 
 @Module({
   imports: [
@@ -19,7 +22,7 @@ import { User } from './entities/user.entity';
         username: configService.get('DB_USERNAME') || 'postgres',
         password: configService.get('DB_PASSWORD') || 'password',
         database: configService.get('DB_NAME') || 'editron',
-        entities: [User],
+        entities: [User, Document, UserFile],
         synchronize: process.env.NODE_ENV !== 'production', // Auto sync in development
         logging: process.env.NODE_ENV === 'development',
       }),
@@ -27,6 +30,7 @@ import { User } from './entities/user.entity';
     }),
     AuthModule,
     UserModule,
+    DocumentModule,
   ],
   controllers: [],
   providers: [],

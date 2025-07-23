@@ -1028,4 +1028,20 @@ pub async fn logout(app: AppHandle) -> Result<(), String> {
     app.emit("logout_success", ()).map_err(|e| e.to_string())?;
     log::info!("Logout completed successfully");
     Ok(())
+}
+
+/// Tauri command to get the current access token
+#[tauri::command]
+pub async fn get_access_token(_app: AppHandle) -> Result<String, String> {
+    log::info!("Getting access token via Tauri command");
+    let server_id = CONFIG.server.default_server_id.clone();
+    
+    let tokens = ACCESS_TOKENS.lock().unwrap();
+    if let Some(token_data) = tokens.get(&server_id) {
+        log::info!("Access token found for server: {}", server_id);
+        Ok(token_data.access_token.clone())
+    } else {
+        log::warn!("No access token found for server: {}", server_id);
+        Err("No access token available".to_string())
+    }
 } 

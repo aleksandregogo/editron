@@ -19,6 +19,21 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - socket-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./
@@ -34,11 +49,15 @@ services:
       DB_USERNAME: kukumala
       DB_PASSWORD: abduljabarkhani
       DB_NAME: editron
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
       - ./:/app
       - /app/node_modules
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
 networks:
@@ -47,3 +66,4 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:

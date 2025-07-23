@@ -1,8 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
-import { Request } from 'express';
-import { AuthService } from '../auth.service';
 import { UserService } from '../../user/user.service';
 import { AuthProvider, UserInfo } from '../interfaces/user-info.interface';
 import { User } from '../../entities/user.entity';
@@ -12,27 +10,20 @@ import { ConfigService } from '@nestjs/config';
 export class JWTStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly userService: UserService,
-    private readonly authService: AuthService,
     private readonly configService: ConfigService
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
-      passReqToCallback: true,
     });
   }
 
-  async validate(req: Request): Promise<UserInfo> {
-    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
-    if (!token) {
-      throw new UnauthorizedException('Token not found');
-    }
-
+  async validate(payload: UserInfo): Promise<UserInfo> {
     try {
-      // Note: verifyJwt method will be implemented in AuthService
-      const payload = this.authService.verifyJwt(token);
-
+      // Passport has already verified the JWT token for us
+      // Now we just need to validate the user exists and attach user data
+      
       let existingUser: User | null = null;
 
       if (payload.authProvider === AuthProvider.facebook) {
@@ -45,12 +36,13 @@ export class JWTStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('User not found');
       }
 
+      // Attach the full user object to the payload
       payload.user = existingUser;
 
       return payload;
     } catch (err) {
-      console.log(err);
-      throw new UnauthorizedException('Invalid token');
+      console.log('JWT validation error:', err);
+      throw new UnauthorizedException('Invalid token or user not found');
     }
   }
 } 

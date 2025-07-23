@@ -28,9 +28,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     ConfigModule,
   ],
   providers: [
-    JWTStrategy,
     AuthService,
-    UserService
+    UserService,
+    JWTStrategy,
   ],
   controllers: [AuthController],
   exports: [PassportModule, AuthService]

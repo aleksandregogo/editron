@@ -5,6 +5,23 @@ import { VersioningType } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || '';
+  const allowedOrigins = allowedOriginsEnv.split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`CORS: Blocked origin - ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
+    },
+    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Accept, Authorization, X-Requested-With, Cookie, Set-Cookie, cache-control',
+  });
   app.use(session({
     secret: process.env.SESSION_SECRET || 'secret',
     resave: false,
