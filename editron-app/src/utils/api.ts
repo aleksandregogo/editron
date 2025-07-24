@@ -111,6 +111,10 @@ class ApiClient {
   }
 
   // Chat API methods
+  async getChatHistory() {
+    return this.request('/api/v1/chat/history');
+  }
+
   async chatQuery(promptText: string, documentUuid?: string, mode: 'chat' | 'agent' = 'chat'): Promise<ReadableStreamDefaultReader<Uint8Array>> {
     try {
       console.log(`[API] Starting chat query with documentUuid: ${documentUuid || 'none'}, mode: ${mode}`);

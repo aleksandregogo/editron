@@ -19,6 +19,23 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  // Fetch chat history on component mount
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const historyMessages = await apiClient.getChatHistory() as any[];
+        setMessages(historyMessages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content,
+        })));
+      } catch (error) {
+        console.error("Failed to fetch chat history:", error);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
   // Auto-scroll to bottom
   useEffect(() => {
     if (scrollAreaRef.current) {

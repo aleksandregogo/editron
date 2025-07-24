@@ -7,10 +7,13 @@ import { DocumentModule } from './document/document.module';
 import { AiGatewayModule } from './ai-gateway/ai-gateway.module';
 import { IndexingModule } from './indexing/indexing.module';
 import { ChatModule } from './chat/chat.module';
+import { ChatHistoryModule } from './chat-history/chat-history.module';
+import { RedisModule } from './redis/redis.module';
 import { User } from './entities/user.entity';
 import { Document } from './entities/document.entity';
 import { UserFile } from './entities/user-file.entity';
 import { KnowledgeItem } from './entities/knowledge-item.entity';
+import { ChatMessage } from './entities/chat-message.entity';
 
 @Module({
   imports: [
@@ -26,7 +29,7 @@ import { KnowledgeItem } from './entities/knowledge-item.entity';
         username: configService.get('DB_USERNAME') || 'postgres',
         password: configService.get('DB_PASSWORD') || 'password',
         database: configService.get('DB_NAME') || 'editron',
-        entities: [User, Document, UserFile, KnowledgeItem],
+        entities: [User, Document, UserFile, KnowledgeItem, ChatMessage],
         synchronize: process.env.NODE_ENV !== 'production',
         logging: process.env.NODE_ENV === 'development',
       }),
@@ -38,6 +41,8 @@ import { KnowledgeItem } from './entities/knowledge-item.entity';
     AiGatewayModule,
     IndexingModule,
     ChatModule,
+    ChatHistoryModule,
+    RedisModule,
   ],
   controllers: [],
   providers: [],

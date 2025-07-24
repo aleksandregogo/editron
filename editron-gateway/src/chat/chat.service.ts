@@ -2,12 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets } from 'typeorm';
 import { Observable } from 'rxjs';
-import { AiGatewayService, ChatMessage, ChatMessageRole } from '../ai-gateway/ai-gateway.service';
+import { AiGatewayService, ChatMessage as AiChatMessage, ChatMessageRole as AiChatMessageRole } from '../ai-gateway/ai-gateway.service';
 import { UserInfo } from '../auth/interfaces/user-info.interface';
 import { Document } from '../entities/document.entity';
 import { KnowledgeItem } from '../entities/knowledge-item.entity';
 import { generateRagChatCompletionPrompt, generateDocumentChatPrompt, generateDocumentAgentPrompt } from '../common/prompts/custom-prompts';
 import { ChatMode } from './dto/chat-query.dto';
+import { ChatHistoryService } from '../chat-history/chat-history.service';
+import { ChatMessageRole } from '../entities/chat-message.entity';
 
 @Injectable()
 export class ChatService {
@@ -19,6 +21,7 @@ export class ChatService {
     private readonly documentRepository: Repository<Document>,
     @InjectRepository(KnowledgeItem)
     private readonly knowledgeRepository: Repository<KnowledgeItem>,
+    private readonly chatHistoryService: ChatHistoryService,
   ) {}
 
   async processUserQueryStream(
@@ -63,8 +66,14 @@ export class ChatService {
       this.logger.log(`User ${userId} RAG found ${relevantChunks.length} chunks. Mode: ${documentUuid ? 'Editor' : 'General'}`);
     }
 
-    // Prompt Selection and Generation
-    const chatHistory: { role: string; content: string }[] = []; // Will be enhanced later with Redis history
+    // Get chat history with token budget
+    const maxTokens = 8192;
+    const reservedForOutput = 1000;
+    const promptTokens = Math.ceil(promptText.length / 4);
+    const contextTokens = Math.ceil(relevantChunks.join('').length / 4);
+    const historyTokenBudget = maxTokens - reservedForOutput - promptTokens - contextTokens;
+
+    const chatHistory = await this.chatHistoryService.getRecentHistory(userId, historyTokenBudget);
     let finalMessages: { role: string; content: string }[];
 
     if (documentUuid) {
@@ -80,8 +89,8 @@ export class ChatService {
     }
 
     // Convert to ChatMessage format and call LLM
-    const chatMessages: ChatMessage[] = finalMessages.map(m => ({
-      role: m.role as ChatMessageRole,
+    const chatMessages: AiChatMessage[] = finalMessages.map(m => ({
+      role: m.role as AiChatMessageRole,
       content: m.content
     }));
 
