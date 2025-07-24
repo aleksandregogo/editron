@@ -117,7 +117,6 @@ const EditorPage = () => {
       style={{ 
         minHeight: '100vh',
         backgroundColor: 'var(--bg-primary)',
-        // Add right margin to account for the fixed sidebar (25vw + some padding)
         marginRight: 'calc(25vw + 48px)', // 25vw for expanded, 48px for minimized
         transition: 'margin-right var(--transition-normal)',
       }}

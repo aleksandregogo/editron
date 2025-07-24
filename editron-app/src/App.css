@@ -83,6 +83,7 @@
   display: flex;
   min-height: 100vh;
   background-color: var(--bg-primary);
+  position: relative;
 }
 
 /* Sidebar Styles - Using Design System */
@@ -93,17 +94,24 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--color-gray-700);
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: var(--z-fixed);
 }
 
 .sidebar-header {
   padding: var(--space-6);
   border-bottom: 1px solid var(--color-gray-700);
+  flex-shrink: 0;
 }
 
 .user-info {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .profile-picture {
@@ -126,21 +134,33 @@
   color: var(--text-inverse);
 }
 
+.user-details {
+  min-width: 0;
+  flex: 1;
+}
+
 .user-details h3 {
   font-size: var(--text-base);
   font-weight: var(--font-weight-semibold);
   margin-bottom: var(--space-1);
   color: var(--color-gray-50);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-details p {
   font-size: var(--text-sm);
   color: var(--color-gray-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-nav {
   flex: 1;
   padding: var(--space-4) 0;
+  overflow-y: auto;
 }
 
 .nav-item {
@@ -171,6 +191,7 @@
 .sidebar-footer {
   padding: var(--space-6);
   border-top: 1px solid var(--color-gray-700);
+  flex-shrink: 0;
 }
 
 .logout-button {
@@ -205,6 +226,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  margin-left: var(--sidebar-width);
 }
 
 /* Prose styles for Tiptap editor - Using Design System */
