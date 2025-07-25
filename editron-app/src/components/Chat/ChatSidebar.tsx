@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, Bot, User, ChevronRight } from 'lucide-react';
-import './ChatSidebar.css';
 import { apiClient } from '../../utils/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 interface ChatSidebarProps {
   documentUuid?: string;
@@ -108,39 +110,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
   if (isMinimized) {
     return (
       <div 
-        className="chat-sidebar-minimized"
+        className="fixed top-0 right-0 w-12 h-screen bg-muted border-l border-border flex flex-col items-center justify-center cursor-pointer z-30 transition-all duration-300 hover:bg-muted/80"
         onClick={toggleMinimized}
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          width: '48px',
-          height: '100vh',
-          backgroundColor: 'var(--bg-tertiary)',
-          borderLeft: '1px solid var(--border-primary)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 'var(--z-fixed)',
-          transition: 'all var(--transition-normal)',
-        }}
       >
-        <div 
-          className="chat-tab-content"
-          style={{
-            transform: 'rotate(-90deg)',
-            transformOrigin: 'center',
-            whiteSpace: 'nowrap',
-            fontSize: 'var(--text-sm)',
-            fontWeight: 'var(--font-weight-medium)',
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-2)',
-          }}
-        >
+        <div className="rotate-[-90deg] origin-center whitespace-nowrap text-sm font-medium text-muted-foreground flex items-center gap-2">
           <MessageSquare size={16} />
           <span>{documentUuid ? 'Document Chat' : 'AI Chat'}</span>
         </div>
@@ -150,151 +123,43 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
 
   // Expanded state - full sidebar
   return (
-    <div 
-      className="chat-sidebar-expanded"
-      style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        width: '25vw', // 1/4 of screen width
-        minWidth: '300px',
-        maxWidth: '500px',
-        height: '100vh',
-        backgroundColor: 'var(--bg-elevated)',
-        borderLeft: '1px solid var(--border-primary)',
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 'var(--z-fixed)',
-        boxShadow: 'var(--shadow-lg)',
-      }}
-    >
+    <div className="fixed top-0 right-0 w-[25vw] min-w-[300px] max-w-[500px] h-screen bg-card border-l border-border flex flex-col z-30 shadow-lg">
       {/* Header */}
-      <div 
-        className="chat-header"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: 'var(--space-3) var(--space-4)',
-          borderBottom: '1px solid var(--border-secondary)',
-          backgroundColor: 'var(--bg-tertiary)',
-          minHeight: '56px',
-        }}
-      >
-        <div 
-          className="header-content"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-3)',
-          }}
-        >
-          <MessageSquare 
-            size={18} 
-            style={{ color: 'var(--accent-primary)' }}
-          />
+      <div className="flex items-center justify-between p-3 border-b border-border bg-muted/50 min-h-[56px]">
+        <div className="flex items-center gap-3">
+          <MessageSquare size={18} className="text-primary" />
           <div>
-            <h3 
-              style={{
-                fontSize: 'var(--text-sm)',
-                fontWeight: 'var(--font-weight-semibold)',
-                color: 'var(--text-primary)',
-                margin: 0,
-                lineHeight: 1.2,
-              }}
-            >
+            <h3 className="text-sm font-semibold text-foreground m-0 leading-tight">
               {documentUuid ? 'Document Assistant' : 'AI Assistant'}
             </h3>
-            <p 
-              style={{
-                fontSize: 'var(--text-xs)',
-                color: 'var(--text-secondary)',
-                margin: 0,
-                lineHeight: 1.2,
-              }}
-            >
+            <p className="text-xs text-muted-foreground m-0 leading-tight">
               {documentUuid ? 'Ask about this document' : 'General chat about your documents'}
             </p>
           </div>
         </div>
         
-        <button
+        <Button
           onClick={toggleMinimized}
-          className="minimize-btn"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '32px',
-            height: '32px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            transition: 'all var(--transition-fast)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
-            e.currentTarget.style.color = 'var(--text-primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = 'var(--text-secondary)';
-          }}
+          variant="ghost"
+          size="sm"
+          className="w-8 h-8 p-0"
         >
           <ChevronRight size={16} />
-        </button>
+        </Button>
       </div>
 
       {/* Messages Area */}
       <div 
         ref={scrollAreaRef}
-        className="messages-container"
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: 'var(--space-4)',
-          backgroundColor: 'var(--bg-primary)',
-        }}
+        className="flex-1 overflow-y-auto p-4 bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-muted"
       >
         {messages.length === 0 && (
-          <div 
-            className="empty-state"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              textAlign: 'center',
-              color: 'var(--text-tertiary)',
-            }}
-          >
-            <MessageSquare 
-              size={48} 
-              style={{ 
-                marginBottom: 'var(--space-4)',
-                opacity: 0.5,
-              }}
-            />
-            <h4 
-              style={{
-                fontSize: 'var(--text-base)',
-                fontWeight: 'var(--font-weight-medium)',
-                marginBottom: 'var(--space-2)',
-                color: 'var(--text-secondary)',
-              }}
-            >
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <MessageSquare size={48} className="mb-4 opacity-50 text-muted-foreground" />
+            <h4 className="text-base font-medium mb-2 text-muted-foreground">
               Start a conversation
             </h4>
-            <p 
-              style={{
-                fontSize: 'var(--text-sm)',
-                color: 'var(--text-tertiary)',
-                maxWidth: '200px',
-              }}
-            >
+            <p className="text-sm text-muted-foreground max-w-[200px]">
               {documentUuid 
                 ? 'Ask questions about this document or request edits'
                 : 'Ask questions about your document library'
@@ -303,71 +168,32 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
           </div>
         )}
         
-        <div className="messages-list" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="flex flex-col gap-4">
           {messages.map((msg, i) => (
             <div 
               key={i} 
-              className={`message-wrapper ${msg.role}`}
-              style={{
-                display: 'flex',
-                flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-                alignItems: 'flex-start',
-                gap: 'var(--space-3)',
-              }}
+              className={`flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
               {/* Avatar */}
-              <div 
-                className="message-avatar"
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  backgroundColor: msg.role === 'user' 
-                    ? 'var(--accent-primary)' 
-                    : 'var(--bg-tertiary)',
-                  color: msg.role === 'user' 
-                    ? 'var(--text-inverse)' 
-                    : 'var(--accent-primary)',
-                }}
-              >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                msg.role === 'user' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-muted text-primary'
+              }`}>
                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
               </div>
               
               {/* Message Bubble */}
-              <div 
-                className="message-bubble"
-                style={{
-                  maxWidth: '85%',
-                  padding: 'var(--space-3)',
-                  borderRadius: 'var(--radius-lg)',
-                  backgroundColor: msg.role === 'user' 
-                    ? 'var(--accent-primary)' 
-                    : 'var(--bg-elevated)',
-                  color: msg.role === 'user' 
-                    ? 'var(--text-inverse)' 
-                    : 'var(--text-primary)',
-                  border: msg.role === 'assistant' 
-                    ? '1px solid var(--border-primary)' 
-                    : 'none',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <p 
-                  style={{
-                    fontSize: 'var(--text-sm)',
-                    lineHeight: 'var(--line-height-relaxed)',
-                    margin: 0,
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
+              <div className={`max-w-[85%] p-3 rounded-lg shadow-sm ${
+                msg.role === 'user' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-card text-card-foreground border border-border'
+              }`}>
+                <p className="text-sm leading-relaxed m-0 whitespace-pre-wrap">
                   {msg.content || (msg.role === 'assistant' && isLoading ? (
-                    <span style={{ opacity: 0.7 }}>
-                      <span className="typing-indicator">Thinking</span>
-                      <span className="dots">...</span>
+                    <span className="opacity-70">
+                      <span className="animate-pulse">Thinking</span>
+                      <span className="animate-bounce">...</span>
                     </span>
                   ) : '')}
                 </p>
@@ -378,24 +204,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
       </div>
       
       {/* Input Form */}
-      <form 
-        onSubmit={handleSubmit} 
-        className="chat-input-form"
-        style={{
-          padding: 'var(--space-4)',
-          borderTop: '1px solid var(--border-secondary)',
-          backgroundColor: 'var(--bg-elevated)',
-        }}
-      >
-        <div 
-          className="input-container"
-          style={{
-            display: 'flex',
-            gap: 'var(--space-2)',
-            alignItems: 'flex-end',
-          }}
-        >
-          <div style={{ flex: 1 }}>
+      <div className="p-4 border-t border-border bg-card">
+        <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+          <div className="flex-1">
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -408,63 +219,19 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
               placeholder={documentUuid ? "Ask about the document..." : "Ask about your documents..."}
               disabled={isLoading}
               rows={1}
-              style={{
-                width: '100%',
-                minHeight: '40px',
-                maxHeight: '120px',
-                padding: 'var(--space-3)',
-                border: '1px solid var(--border-primary)',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-                fontSize: 'var(--text-sm)',
-                fontFamily: 'var(--font-family-sans)',
-                resize: 'none',
-                outline: 'none',
-                transition: 'border-color var(--transition-fast)',
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = 'var(--accent-primary)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = 'var(--border-primary)';
-              }}
+              className="w-full min-h-[40px] max-h-[120px] p-3 border border-input rounded-md bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
             />
           </div>
-          <button
+          <Button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="send-btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
-              backgroundColor: input.trim() && !isLoading ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-              color: input.trim() && !isLoading ? 'var(--text-inverse)' : 'var(--text-tertiary)',
-              border: 'none',
-              borderRadius: 'var(--radius-md)',
-              cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',
-              transition: 'all var(--transition-fast)',
-            }}
-            onMouseEnter={(e) => {
-              if (!isLoading && input.trim()) {
-                e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoading && input.trim()) {
-                e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
-              }
-            }}
+            size="sm"
+            className="w-10 h-10 p-0"
           >
             <Send size={16} />
-          </button>
-        </div>
-      </form>
-
-
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }; 

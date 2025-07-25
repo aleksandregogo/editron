@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import TiptapEditor from './TiptapEditor';
 import { ChatSidebar } from './Chat/ChatSidebar';
 import { apiClient } from '../utils/api';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ArrowLeft, Save, Clock } from 'lucide-react';
 
 interface Document {
   uuid: string;
@@ -59,7 +62,6 @@ const EditorPage = () => {
       setLastSaved(new Date());
     } catch (error) {
       console.error('Error saving document:', error);
-      // Optionally show an error message to the user
     } finally {
       setIsSaving(false);
     }
@@ -87,8 +89,8 @@ const EditorPage = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="spinner spinner-lg mb-4"></div>
-          <p className="text-secondary">Loading document...</p>
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-muted-foreground">Loading document...</p>
         </div>
       </div>
     );
@@ -97,111 +99,116 @@ const EditorPage = () => {
   if (error || !document) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-primary mb-4">Document Error</h2>
-          <p className="text-secondary mb-6">{error || 'Document not found'}</p>
-          <button 
-            onClick={() => navigate('/dashboard')}
-            className="btn btn-primary"
-          >
+        <div className="text-center space-y-4">
+          <div className="text-destructive text-6xl font-bold">404</div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {error || 'Document not found'}
+          </h1>
+          <p className="text-muted-foreground">
+            The document you're looking for doesn't exist or has been moved.
+          </p>
+          <Button onClick={() => navigate('/dashboard')} className="gap-2">
+            <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
-          </button>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (document.status === 'PROCESSING') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <h2 className="text-xl font-semibold text-foreground">Processing Document</h2>
+          <p className="text-muted-foreground max-w-md">
+            Your document is being processed. This usually takes a few minutes. 
+            Please check back shortly.
+          </p>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={fetchDocument} variant="outline">
+              Check Status
+            </Button>
+            <Button onClick={() => navigate('/dashboard')} variant="ghost">
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (document.status === 'ERROR') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="text-destructive text-6xl">⚠️</div>
+          <h2 className="text-xl font-semibold text-foreground">Processing Error</h2>
+          <p className="text-muted-foreground max-w-md">
+            There was an error processing your document. Please try uploading it again.
+          </p>
+          <Button onClick={() => navigate('/dashboard')} className="gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div 
-      className="editor-page"
-      style={{ 
-        minHeight: '100vh',
-        backgroundColor: 'var(--bg-primary)',
-        marginRight: 'calc(25vw + 48px)', // 25vw for expanded, 48px for minimized
-        transition: 'margin-right var(--transition-normal)',
-      }}
-    >
+    <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
-      <div 
-        className="editor-header"
-        style={{ 
-          backgroundColor: 'var(--bg-elevated)', 
-          borderBottom: '1px solid var(--border-primary)',
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="p-2 rounded-lg transition-colors"
-                style={{
-                  color: 'var(--text-secondary)',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <h1 
-                className="text-xl font-semibold"
-                style={{ color: 'var(--text-primary)' }}
-              >
+      <header className="border-b border-border bg-card px-6 py-4">
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={() => navigate('/dashboard')}
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-lg font-semibold text-foreground truncate max-w-md">
                 {document.title}
               </h1>
-              {document.status !== 'READY' && (
-                <span 
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    document.status === 'PROCESSING' ? 'badge-warning' : 'badge-error'
-                  }`}
-                >
-                  {document.status}
-                </span>
-              )}
             </div>
-            <div 
-              className="flex items-center space-x-4 text-sm"
-              style={{ color: 'var(--text-secondary)' }}
-            >
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               {isSaving ? (
-                <span className="flex items-center">
-                  <div 
-                    className="spinner spinner-sm mr-2"
-                    style={{
-                      borderTopColor: 'var(--accent-primary)',
-                    }}
-                  ></div>
-                  Saving...
-                </span>
+                <>
+                  <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <span>Saving...</span>
+                </>
               ) : (
-                <span>{formatLastSaved()}</span>
+                <>
+                  <Clock className="w-4 h-4" />
+                  <span>{formatLastSaved()}</span>
+                </>
               )}
             </div>
           </div>
         </div>
+      </header>
+
+      {/* Editor Content */}
+      <div className="flex-1 bg-gray-50 dark:bg-gray-900">
+        <div className="mr-96 transition-all duration-300">
+          <TiptapEditor
+            initialContent={document.content}
+            onContentChange={handleContentChange}
+            editable={document.status === 'READY'}
+          />
+        </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <TiptapEditor
-          initialContent={document.content}
-          onContentChange={handleContentChange}
-          editable={document.status === 'READY'}
-        />
-      </div>
-
-      {/* Chat Sidebar - Fixed positioned */}
+      {/* Chat Sidebar */}
       <ChatSidebar documentUuid={document.uuid} />
     </div>
   );

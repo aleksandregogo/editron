@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChatSidebar } from './Chat/ChatSidebar';
 import { apiClient } from '../utils/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileText, Upload, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 interface Document {
   uuid: string;
@@ -68,110 +71,128 @@ const Dashboard = () => {
   };
 
   const getStatusBadge = (status: Document['status']) => {
-    const statusStyles = {
-      PROCESSING: 'badge badge-warning',
-      READY: 'badge badge-success',
-      ERROR: 'badge badge-error'
+    const statusConfig = {
+      PROCESSING: { 
+        color: 'bg-yellow-100 text-yellow-800 border-yellow-200', 
+        icon: Clock,
+        text: 'Processing'
+      },
+      READY: { 
+        color: 'bg-green-100 text-green-800 border-green-200', 
+        icon: CheckCircle,
+        text: 'Ready'
+      },
+      ERROR: { 
+        color: 'bg-red-100 text-red-800 border-red-200', 
+        icon: XCircle,
+        text: 'Error'
+      }
     };
 
+    const config = statusConfig[status];
+    const Icon = config.icon;
+
     return (
-      <span className={statusStyles[status]}>
-        {status}
+      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}>
+        <Icon className="w-3 h-3" />
+        {config.text}
       </span>
     );
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center" style={{ height: '16rem' }}>
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="spinner spinner-lg" style={{ margin: '0 auto var(--space-4)' }}></div>
-          <p className="text-secondary">Loading documents...</p>
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading documents...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div 
-      className="dashboard-page"
-      style={{ 
-        maxWidth: 'var(--max-content-width)', 
-        margin: '0 auto', 
-        padding: 'var(--space-6) var(--space-4)',
-        // Add right margin to account for the fixed sidebar
-        marginRight: 'calc(25vw + 48px + var(--space-4))', // 25vw for expanded, 48px for minimized, plus original padding
-        transition: 'margin-right var(--transition-normal)',
-      }}
-    >
-      <div className="card">
-        <div className="card-header flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-primary">My Documents</h2>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            accept=".docx"
-            className="file-input"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="btn btn-primary"
-          >
-            {isUploading ? 'Uploading...' : 'Add New Document'}
-          </button>
-        </div>
-        
-        <div className="card-content">
-          {documents.length === 0 ? (
-            <div className="text-center" style={{ padding: 'var(--space-12) 0' }}>
-              <div className="text-tertiary" style={{ marginBottom: 'var(--space-4)' }}>
-                <svg style={{ margin: '0 auto', height: '3rem', width: '3rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-primary" style={{ marginBottom: 'var(--space-2)' }}>No documents yet</h3>
-              <p className="text-secondary" style={{ marginBottom: 'var(--space-4)' }}>Upload your first DOCX file to get started</p>
-              <button
+    <div className="max-w-6xl mx-auto p-6 mr-96 transition-all duration-300">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl font-semibold text-foreground">My Documents</CardTitle>
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept=".docx"
+                className="sr-only"
+              />
+              <Button
                 onClick={() => fileInputRef.current?.click()}
-                className="btn btn-primary"
+                disabled={isUploading}
+                className="gap-2"
               >
+                <Upload className="w-4 h-4" />
+                {isUploading ? 'Uploading...' : 'Add New Document'}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent>
+          {documents.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground mb-4">
+                <FileText className="w-12 h-12 mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-foreground mb-2">No documents yet</h3>
+              <p className="text-muted-foreground mb-4">Upload your first DOCX file to get started</p>
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2"
+              >
+                <Upload className="w-4 h-4" />
                 Upload Document
-              </button>
+              </Button>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="table">
+            <div className="overflow-x-auto">
+              <table className="w-full">
                 <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Last Updated</th>
-                    <th>Actions</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+                      Title
+                    </th>
+                    <th className="text-left py-3 px-4 font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="text-left py-3 px-4 font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+                      Last Updated
+                    </th>
+                    <th className="text-right py-3 px-4 font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {documents.map((doc) => (
-                    <tr key={doc.uuid}>
-                      <td>
-                        <div className="text-sm font-medium text-primary">{doc.title}</div>
+                    <tr key={doc.uuid} className="border-b border-border hover:bg-muted/50 transition-colors">
+                      <td className="py-4 px-4">
+                        <div className="font-medium text-foreground">{doc.title}</div>
                       </td>
-                      <td>
+                      <td className="py-4 px-4">
                         {getStatusBadge(doc.status)}
                       </td>
-                      <td className="text-sm text-secondary">
+                      <td className="py-4 px-4 text-sm text-muted-foreground">
                         {formatDate(doc.updatedAt)}
                       </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
+                      <td className="py-4 px-4 text-right">
+                        <Button
                           onClick={() => navigate(`/editor/${doc.uuid}`)}
                           disabled={doc.status !== 'READY'}
-                          className="btn btn-ghost btn-sm"
-                          style={{ opacity: doc.status !== 'READY' ? 0.5 : 1 }}
+                          variant="ghost"
+                          size="sm"
                         >
                           {doc.status === 'READY' ? 'Edit' : 'View'}
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -179,10 +200,9 @@ const Dashboard = () => {
               </table>
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Chat Sidebar - Fixed positioned (without document UUID for general mode) */}
       <ChatSidebar />
     </div>
   );

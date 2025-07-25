@@ -1,6 +1,21 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Bold, 
+  Italic, 
+  List, 
+  ListOrdered, 
+  Quote, 
+  Minus, 
+  Undo, 
+  Redo,
+  Heading1,
+  Heading2,
+  Heading3
+} from 'lucide-react';
 
 interface TiptapEditorProps {
   initialContent: string;
@@ -15,7 +30,7 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
     editable,
     editorProps: {
       attributes: {
-        class: 'editor-content',
+        class: 'prose prose-lg max-w-none focus:outline-none min-h-[500px] px-12 py-8',
       },
     },
     onUpdate: ({ editor }) => {
@@ -33,140 +48,157 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
 
   if (!editor) {
     return (
-      <div className="editor-loading">
-        <div className="spinner"></div>
-        <p className="text-secondary">Loading editor...</p>
+      <div className="flex flex-col items-center justify-center gap-4 p-16 text-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-muted-foreground">Loading editor...</p>
       </div>
     );
   }
 
+  const ToolbarButton = ({ 
+    onClick, 
+    isActive = false, 
+    disabled = false, 
+    title, 
+    children 
+  }: {
+    onClick: () => void;
+    isActive?: boolean;
+    disabled?: boolean;
+    title: string;
+    children: React.ReactNode;
+  }) => (
+    <Button
+      onClick={onClick}
+      disabled={disabled}
+      variant={isActive ? "default" : "ghost"}
+      size="sm"
+      className="h-8 w-8 p-0"
+      title={title}
+    >
+      {children}
+    </Button>
+  );
+
   return (
-    <div className="editor-container">
+    <div className="bg-white dark:bg-gray-900 border border-border rounded-lg shadow-sm overflow-hidden flex flex-col min-h-[600px]">
       {editable && (
-        <div className="editor-toolbar">
-          <div className="editor-toolbar-group">
-            <button
-              onClick={() => editor.chain().focus().toggleBold().run()}
-              className={`editor-toolbar-btn ${editor.isActive('bold') ? 'active' : ''}`}
-              title="Bold"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
-              </svg>
-            </button>
-            
-            <button
-              onClick={() => editor.chain().focus().toggleItalic().run()}
-              className={`editor-toolbar-btn ${editor.isActive('italic') ? 'active' : ''}`}
-              title="Italic"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4h-8z"/>
-              </svg>
-            </button>
+        <div className="bg-muted/50 border-b border-border p-3">
+          <div className="flex items-center gap-1 flex-wrap">
+            <div className="flex items-center gap-1">
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                isActive={editor.isActive('bold')}
+                title="Bold"
+              >
+                <Bold className="h-4 w-4" />
+              </ToolbarButton>
+              
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                isActive={editor.isActive('italic')}
+                title="Italic"
+              >
+                <Italic className="h-4 w-4" />
+              </ToolbarButton>
+            </div>
 
-            <div className="toolbar-separator"></div>
+            <Separator orientation="vertical" className="h-6 mx-1" />
 
-            <button
-              onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-              className={`editor-toolbar-btn ${editor.isActive('heading', { level: 1 }) ? 'active' : ''}`}
-              title="Heading 1"
-            >
-              H1
-            </button>
-            
-            <button
-              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-              className={`editor-toolbar-btn ${editor.isActive('heading', { level: 2 }) ? 'active' : ''}`}
-              title="Heading 2"
-            >
-              H2
-            </button>
+            <div className="flex items-center gap-1">
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                isActive={editor.isActive('heading', { level: 1 })}
+                title="Heading 1"
+              >
+                <Heading1 className="h-4 w-4" />
+              </ToolbarButton>
+              
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                isActive={editor.isActive('heading', { level: 2 })}
+                title="Heading 2"
+              >
+                <Heading2 className="h-4 w-4" />
+              </ToolbarButton>
 
-            <button
-              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-              className={`editor-toolbar-btn ${editor.isActive('heading', { level: 3 }) ? 'active' : ''}`}
-              title="Heading 3"
-            >
-              H3
-            </button>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                isActive={editor.isActive('heading', { level: 3 })}
+                title="Heading 3"
+              >
+                <Heading3 className="h-4 w-4" />
+              </ToolbarButton>
+            </div>
 
-            <div className="toolbar-separator"></div>
+            <Separator orientation="vertical" className="h-6 mx-1" />
 
-            <button
-              onClick={() => editor.chain().focus().toggleBulletList().run()}
-              className={`editor-toolbar-btn ${editor.isActive('bulletList') ? 'active' : ''}`}
-              title="Bullet List"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/>
-              </svg>
-            </button>
-            
-            <button
-              onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              className={`editor-toolbar-btn ${editor.isActive('orderedList') ? 'active' : ''}`}
-              title="Numbered List"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-6v2h14V5H7zm0 14h14v-2H7v2zm0-6h14v-2H7v2z"/>
-              </svg>
-            </button>
+            <div className="flex items-center gap-1">
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                isActive={editor.isActive('bulletList')}
+                title="Bullet List"
+              >
+                <List className="h-4 w-4" />
+              </ToolbarButton>
+              
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                isActive={editor.isActive('orderedList')}
+                title="Numbered List"
+              >
+                <ListOrdered className="h-4 w-4" />
+              </ToolbarButton>
+            </div>
 
-            <div className="toolbar-separator"></div>
+            <Separator orientation="vertical" className="h-6 mx-1" />
 
-            <button
-              onClick={() => editor.chain().focus().toggleBlockquote().run()}
-              className={`editor-toolbar-btn ${editor.isActive('blockquote') ? 'active' : ''}`}
-              title="Quote"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/>
-              </svg>
-            </button>
+            <div className="flex items-center gap-1">
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleBlockquote().run()}
+                isActive={editor.isActive('blockquote')}
+                title="Quote"
+              >
+                <Quote className="h-4 w-4" />
+              </ToolbarButton>
 
-            <button
-              onClick={() => editor.chain().focus().setHorizontalRule().run()}
-              className="editor-toolbar-btn"
-              title="Horizontal Rule"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4 11h16v2H4z"/>
-              </svg>
-            </button>
-          </div>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().setHorizontalRule().run()}
+                title="Horizontal Rule"
+              >
+                <Minus className="h-4 w-4" />
+              </ToolbarButton>
+            </div>
 
-          {editable && (
-            <div className="editor-toolbar-group">
-              <button
+            <Separator orientation="vertical" className="h-6 mx-1" />
+
+            <div className="flex items-center gap-1">
+              <ToolbarButton
                 onClick={() => editor.chain().focus().undo().run()}
                 disabled={!editor.can().undo()}
-                className="editor-toolbar-btn"
                 title="Undo"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
-                </svg>
-              </button>
+                <Undo className="h-4 w-4" />
+              </ToolbarButton>
               
-              <button
+              <ToolbarButton
                 onClick={() => editor.chain().focus().redo().run()}
                 disabled={!editor.can().redo()}
-                className="editor-toolbar-btn"
                 title="Redo"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/>
-                </svg>
-              </button>
+                <Redo className="h-4 w-4" />
+              </ToolbarButton>
             </div>
-          )}
+          </div>
         </div>
       )}
       
-      <div className="editor-content-wrapper">
-        <div className="document-container">
-          <EditorContent editor={editor} />
+      <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-auto">
+        <div className="max-w-4xl mx-auto mt-8 mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
+          <EditorContent 
+            editor={editor} 
+            className="prose prose-lg prose-gray dark:prose-invert max-w-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[500px] [&_.ProseMirror]:px-12 [&_.ProseMirror]:py-8"
+          />
         </div>
       </div>
     </div>

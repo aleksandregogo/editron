@@ -1,5 +1,9 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { LogOut, FileText } from 'lucide-react';
 
 interface UserProfile {
   id: number;
@@ -33,52 +37,57 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
   };
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="user-info">
-            {profile?.profilePicture ? (
-              <img 
-                src={profile.profilePicture} 
-                alt="Profile" 
-                className="profile-picture"
-              />
-            ) : (
-              <div className="profile-picture-placeholder">
-                {profile?.name?.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="user-details">
-              <h3>{profile?.name}</h3>
-              <p>{profile?.email}</p>
+    <div className="flex min-h-screen bg-background">
+      <aside className="w-80 bg-gray-800 text-gray-50 flex flex-col border-r border-gray-700 fixed top-0 left-0 h-screen z-30">
+        <div className="p-6 border-b border-gray-700 flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar className="w-12 h-12">
+              {profile?.profilePicture ? (
+                <AvatarImage src={profile.profilePicture} alt="Profile" />
+              ) : (
+                <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
+                  {profile?.name?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-semibold mb-1 text-gray-50 truncate">
+                {profile?.name}
+              </h3>
+              <p className="text-sm text-gray-400 truncate">
+                {profile?.email}
+              </p>
             </div>
           </div>
         </div>
         
-        <nav className="sidebar-nav">
-          <div 
-            className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`}
+        <nav className="flex-1 py-4 overflow-y-auto">
+          <button 
+            className={`flex items-center w-full px-6 py-3 text-sm font-medium transition-colors ${
+              isActive('/dashboard') 
+                ? 'bg-primary text-primary-foreground border-r-3 border-primary/80' 
+                : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100'
+            }`}
             onClick={() => navigate('/dashboard')}
           >
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v14l-5-3-5 3V5z" />
-            </svg>
+            <FileText className="w-5 h-5 mr-2" />
             <span>Dashboard</span>
-          </div>
+          </button>
         </nav>
         
-        <div className="sidebar-footer">
-          <button onClick={handleLogout} className="logout-button">
-            <svg viewBox="0 0 24 24" className="logout-icon">
-              <path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
-            </svg>
+        <div className="p-6 border-t border-gray-700 flex-shrink-0">
+          <Button 
+            onClick={handleLogout} 
+            variant="outline" 
+            className="w-full gap-2 border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-gray-500"
+          >
+            <LogOut className="w-4 h-4" />
             Logout
-          </button>
+          </Button>
         </div>
       </aside>
       
-      <main className="main-content">
+      <main className="flex-1 flex flex-col min-h-screen ml-80 bg-background">
         {children}
       </main>
     </div>
