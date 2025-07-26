@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import TiptapEditor from './TiptapEditor';
 import { ChatSidebar } from './Chat/ChatSidebar';
 import { AgentReviewModal } from './Diff/AgentReviewModal';
 import { apiClient } from '../utils/api';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ArrowLeft, Save, Clock } from 'lucide-react';
+import { ArrowLeft, Clock } from 'lucide-react';
 
 interface Document {
   uuid: string;
@@ -30,6 +29,9 @@ const EditorPage = () => {
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
   const [isAgentLoading, setIsAgentLoading] = useState(false);
   const [agentDiffHtml, setAgentDiffHtml] = useState<string | null>(null);
+  
+  // Chat history refresh function - use useRef to avoid useState calling the function
+  const refreshChatHistoryRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     if (uuid) {
@@ -107,6 +109,15 @@ const EditorPage = () => {
       setIsAgentModalOpen(false);
     } finally {
       setIsAgentLoading(false);
+      
+      // Refresh chat history after a small delay to ensure modal state has settled
+      if (refreshChatHistoryRef.current) {
+        setTimeout(() => {
+          refreshChatHistoryRef.current!().catch((error: any) => {
+            console.error('Error refreshing chat history:', error);
+          });
+        }, 250); // Small delay to let React finish state updates
+      }
     }
   };
 
@@ -253,7 +264,11 @@ const EditorPage = () => {
       </div>
 
       {/* Chat Sidebar */}
-      <ChatSidebar documentUuid={document.uuid} onAgentRequest={handleAgentRequest} />
+      <ChatSidebar 
+        documentUuid={document.uuid} 
+        onAgentRequest={handleAgentRequest} 
+        onHistoryRefresh={(refreshFn) => { refreshChatHistoryRef.current = refreshFn; }}
+      />
 
       {/* Agent Review Modal */}
       <AgentReviewModal

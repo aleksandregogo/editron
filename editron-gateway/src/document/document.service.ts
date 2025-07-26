@@ -8,7 +8,9 @@ import { Document, DocumentStatus } from '../entities/document.entity';
 import { User } from '../entities/user.entity';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
 import { generateFullDocumentAgentPrompt } from '../common/prompts/custom-prompts';
-import { diffChars } from 'diff';
+import { diffWords } from 'diff';
+import { ChatHistoryService } from '../chat-history/chat-history.service';
+import { ChatMessageRole } from '../entities/chat-message.entity';
 
 @Injectable()
 export class DocumentService {
@@ -20,6 +22,7 @@ export class DocumentService {
     @InjectQueue('documentProcessingQueue')
     private readonly documentQueue: Queue,
     private readonly aiGatewayService: AiGatewayService,
+    private readonly chatHistoryService: ChatHistoryService,
   ) {}
 
   async createFromUpload(user: User, fileBuffer: Buffer, originalName: string): Promise<Document> {
@@ -105,6 +108,9 @@ export class DocumentService {
     documentUuid: string,
     promptText: string,
   ): Promise<{ originalContent: string; suggestedContent: string; diffHtml: string; }> {
+    // Save user message to chat history
+    await this.chatHistoryService.addMessage(userId, ChatMessageRole.USER, promptText);
+
     // 1. Fetch the document and apply guardrails
     const document = await this.findOneByUser(documentUuid, userId);
     const originalContent = document.content;
@@ -133,6 +139,10 @@ export class DocumentService {
     // 3. Backend is the Diff Authority: Calculate the diff here
     const diffHtml = this.generateDiffHtml(originalContent, suggestedContent);
 
+    // Save assistant response to chat history
+    const assistantMessage = `I've analyzed your request "${promptText}" and generated suggested edits for the document. The changes include modifications to improve the content based on your request.`;
+    await this.chatHistoryService.addMessage(userId, ChatMessageRole.ASSISTANT, assistantMessage);
+
     // 4. Return all three pieces of data to the frontend
     return {
       originalContent,
@@ -142,7 +152,7 @@ export class DocumentService {
   }
 
   private generateDiffHtml(originalContent: string, suggestedContent: string): string {
-    const changes = diffChars(originalContent, suggestedContent);
+    const changes = diffWords(originalContent, suggestedContent);
     
     return changes
       .map(part => {

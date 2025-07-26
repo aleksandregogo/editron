@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageSquare, Send, Bot, User, ChevronRight } from 'lucide-react';
 import { apiClient } from '../../utils/api';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 interface ChatSidebarProps {
   documentUuid?: string;
   onAgentRequest?: (promptText: string) => void;
+  onHistoryRefresh?: (refreshFn: () => Promise<void>) => void;
 }
 
 interface ChatMessage {
@@ -13,7 +14,7 @@ interface ChatMessage {
   content: string;
 }
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid, onAgentRequest }) => {
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid, onAgentRequest, onHistoryRefresh }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -21,22 +22,35 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid, onAgentR
   const [isAgentMode, setIsAgentMode] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Fetch chat history on component mount
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const historyMessages = await apiClient.getChatHistory() as any[];
-        setMessages(historyMessages.map((msg: any) => ({
-          role: msg.role,
-          content: msg.content,
-        })));
-      } catch (error) {
-        console.error("Failed to fetch chat history:", error);
-      }
-    };
-
-    fetchHistory();
+  // Function to fetch chat history
+  const fetchHistory = useCallback(async () => {
+    try {
+      const historyMessages = await apiClient.getChatHistory() as any[];
+      setMessages(historyMessages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+      })));
+    } catch (error) {
+      console.error("Failed to fetch chat history:", error);
+    }
   }, []);
+
+  // Simple refresh function that calls fetchHistory directly
+  const stableRefresh = useCallback(async () => {
+    await fetchHistory();
+  }, [fetchHistory]);
+
+  // Fetch chat history on component mount and expose refresh function
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  // Expose refresh function to parent - separate effect to avoid dependency issues
+  useEffect(() => {
+    if (onHistoryRefresh) {
+      onHistoryRefresh(stableRefresh);
+    }
+  }, [onHistoryRefresh, stableRefresh]);
 
   // Auto-scroll to bottom
   useEffect(() => {

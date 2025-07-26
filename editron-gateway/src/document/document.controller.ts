@@ -81,7 +81,7 @@ export class DocumentController {
     @Body() agentRequestDto: AgentRequestDto,
   ) {
     return this.documentService.generateAgentSuggestion(
-      userInfo.user.id,
+      userInfo.userLocalId,
       agentRequestDto.documentUuid,
       agentRequestDto.promptText,
     );
