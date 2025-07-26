@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import TiptapEditor from './TiptapEditor';
 import { ChatSidebar } from './Chat/ChatSidebar';
+import { AgentReviewModal } from './Diff/AgentReviewModal';
 import { apiClient } from '../utils/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -24,6 +25,11 @@ const EditorPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  
+  // Agent Review Modal state
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+  const [isAgentLoading, setIsAgentLoading] = useState(false);
+  const [agentDiffHtml, setAgentDiffHtml] = useState<string | null>(null);
 
   useEffect(() => {
     if (uuid) {
@@ -83,6 +89,44 @@ const EditorPage = () => {
     } else {
       return `Saved at ${lastSaved.toLocaleTimeString()}`;
     }
+  };
+
+  const handleAgentRequest = async (promptText: string) => {
+    if (!document) return;
+    
+    setIsAgentModalOpen(true);
+    setIsAgentLoading(true);
+    setAgentDiffHtml(null);
+    
+    try {
+      const response = await apiClient.agentEdit(document.uuid, promptText) as any;
+      setAgentDiffHtml(response.diffHtml);
+    } catch (error) {
+      console.error('Agent edit failed:', error);
+      // TODO: Show error toast
+      setIsAgentModalOpen(false);
+    } finally {
+      setIsAgentLoading(false);
+    }
+  };
+
+  const handleAgentConfirm = async (finalContent: string) => {
+    if (!document) return;
+    
+    try {
+      await handleContentChange(finalContent);
+      setIsAgentModalOpen(false);
+      setAgentDiffHtml(null);
+    } catch (error) {
+      console.error('Failed to apply agent changes:', error);
+      // TODO: Show error toast
+    }
+  };
+
+  const handleAgentClose = () => {
+    setIsAgentModalOpen(false);
+    setAgentDiffHtml(null);
+    setIsAgentLoading(false);
   };
 
   if (isLoading) {
@@ -209,7 +253,16 @@ const EditorPage = () => {
       </div>
 
       {/* Chat Sidebar */}
-      <ChatSidebar documentUuid={document.uuid} />
+      <ChatSidebar documentUuid={document.uuid} onAgentRequest={handleAgentRequest} />
+
+      {/* Agent Review Modal */}
+      <AgentReviewModal
+        isOpen={isAgentModalOpen}
+        isLoading={isAgentLoading}
+        diffHtml={agentDiffHtml}
+        onConfirm={handleAgentConfirm}
+        onClose={handleAgentClose}
+      />
     </div>
   );
 };

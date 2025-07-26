@@ -11,13 +11,16 @@ import {
   ParseFilePipe, 
   MaxFileSizeValidator, 
   FileTypeValidator, 
-  Logger 
+  Logger,
+  HttpCode,
+  HttpStatus
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthUser } from '../auth/decorators/auth-user.decorator';
 import { UserInfo } from '../auth/interfaces/user-info.interface';
 import { DocumentService } from './document.service';
+import { AgentRequestDto } from './dto/agent-request.dto';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('documents')
@@ -69,5 +72,18 @@ export class DocumentController {
     @Body() updateData: { content?: string; title?: string },
   ) {
     return this.documentService.updateDocument(uuid, userInfo.user.id, updateData);
+  }
+
+  @Post('agent-edit')
+  @HttpCode(HttpStatus.OK)
+  async agentEdit(
+    @AuthUser() userInfo: UserInfo,
+    @Body() agentRequestDto: AgentRequestDto,
+  ) {
+    return this.documentService.generateAgentSuggestion(
+      userInfo.user.id,
+      agentRequestDto.documentUuid,
+      agentRequestDto.promptText,
+    );
   }
 } 

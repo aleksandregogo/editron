@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -6,6 +6,9 @@ import { Queue } from 'bullmq';
 import * as mammoth from 'mammoth';
 import { Document, DocumentStatus } from '../entities/document.entity';
 import { User } from '../entities/user.entity';
+import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
+import { generateFullDocumentAgentPrompt } from '../common/prompts/custom-prompts';
+import { diffChars } from 'diff';
 
 @Injectable()
 export class DocumentService {
@@ -16,6 +19,7 @@ export class DocumentService {
     private readonly documentRepository: Repository<Document>,
     @InjectQueue('documentProcessingQueue')
     private readonly documentQueue: Queue,
+    private readonly aiGatewayService: AiGatewayService,
   ) {}
 
   async createFromUpload(user: User, fileBuffer: Buffer, originalName: string): Promise<Document> {
@@ -94,5 +98,62 @@ export class DocumentService {
     this.logger.log(`Updated document ${uuid} for user ${userId}`);
     
     return doc;
+  }
+
+  async generateAgentSuggestion(
+    userId: number,
+    documentUuid: string,
+    promptText: string,
+  ): Promise<{ originalContent: string; suggestedContent: string; diffHtml: string; }> {
+    // 1. Fetch the document and apply guardrails
+    const document = await this.findOneByUser(documentUuid, userId);
+    const originalContent = document.content;
+
+    // GUARDRAIL: Add a size limit check.
+    const MAX_HTML_SIZE_BYTES = 500 * 1024; // 500KB
+    if (Buffer.from(originalContent).length > MAX_HTML_SIZE_BYTES) {
+      this.logger.warn(`User ${userId} attempted agent edit on oversized document ${documentUuid}.`);
+      throw new BadRequestException('Document is too large for the AI Agent to process.');
+    }
+
+    // 2. Generate the prompt and call the LLM
+    const messages = generateFullDocumentAgentPrompt(originalContent, promptText);
+    const aiMessages = messages.map(m => ({ role: m.role as any, content: m.content }));
+
+    this.logger.log(`Calling Full Document Agent for doc ${documentUuid}...`);
+    const suggestedContent = await this.aiGatewayService.callChatCompletions(aiMessages);
+
+    if (!suggestedContent || !suggestedContent.trim().startsWith('<')) {
+      this.logger.error(`Agent returned an invalid or empty response for doc ${documentUuid}.`);
+      throw new InternalServerErrorException('AI agent failed to generate a valid document edit.');
+    }
+    
+    this.logger.log(`Agent returned a valid suggestion for doc ${documentUuid}.`);
+
+    // 3. Backend is the Diff Authority: Calculate the diff here
+    const diffHtml = this.generateDiffHtml(originalContent, suggestedContent);
+
+    // 4. Return all three pieces of data to the frontend
+    return {
+      originalContent,
+      suggestedContent,
+      diffHtml, // The raw HTML with <ins> and <del> tags
+    };
+  }
+
+  private generateDiffHtml(originalContent: string, suggestedContent: string): string {
+    const changes = diffChars(originalContent, suggestedContent);
+    
+    return changes
+      .map(part => {
+        if (part.added) {
+          return `<ins class="diffins">${part.value}</ins>`;
+        } else if (part.removed) {
+          return `<del class="diffdel">${part.value}</del>`;
+        } else {
+          return part.value;
+        }
+      })
+      .join('');
   }
 } 

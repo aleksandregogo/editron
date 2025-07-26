@@ -68,6 +68,59 @@ export class AiGatewayService {
         return allEmbeddings;
     }
 
+    async callChatCompletions(messages: ChatMessage[]): Promise<string> {
+        const finalPathOrId = `workers-ai/${this.chatModelId}`;
+        const url = `${this.gatewayApiUrl}/${finalPathOrId}`;
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'cf-aig-authorization': `Bearer ${this.cfGatewayToken}`,
+            'Authorization': `Bearer ${this.cfWorkerToken}`,
+        };
+
+        const input = {
+            messages: messages.map(m => ({ role: m.role, content: m.content })),
+            stream: false,
+            max_tokens: 4096,
+            temperature: 0.7,
+        };
+
+        this.logger.debug(`Initiating NON-STREAMING Workers AI request to ${url}`);
+
+        try {
+            const response = await firstValueFrom(
+                this.httpService.post(url, input, { headers }).pipe(
+                    catchError((error: AxiosError) => {
+                        this.logger.error(`Workers AI Non-streaming Request Error: ${error.message}`, error.stack);
+                        if (error.response) {
+                            this.logger.error(`Error Response Status: ${error.response.status}`);
+                            this.logger.error(`Error Response Data: ${JSON.stringify(error.response.data)}`);
+                        }
+                        throw error;
+                    }),
+                )
+            );
+
+            this.logger.debug(`Workers AI non-streaming response received for ${this.chatModelId}`);
+            
+            // Handle Workers AI response format
+            const result = response.data?.result;
+            if (result && typeof result.response === 'string') {
+                return result.response;
+            }
+            
+            // Fallback for other formats
+            if (result && result.choices && result.choices[0] && result.choices[0].message) {
+                return result.choices[0].message.content;
+            }
+            
+            throw new Error('Invalid response format from AI service');
+        } catch (error) {
+            this.logger.error(`Failed to complete non-streaming AI request for ${this.chatModelId}`, error.message);
+            throw error;
+        }
+    }
+
     async callChatCompletionsStream(messages: ChatMessage[]): Promise<Observable<string>> {
         const finalPathOrId = `workers-ai/${this.chatModelId}`;
         const url = `${this.gatewayApiUrl}/${finalPathOrId}`;

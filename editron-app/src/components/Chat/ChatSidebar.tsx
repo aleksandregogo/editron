@@ -2,11 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, Bot, User, ChevronRight } from 'lucide-react';
 import { apiClient } from '../../utils/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 
 interface ChatSidebarProps {
   documentUuid?: string;
+  onAgentRequest?: (promptText: string) => void;
 }
 
 interface ChatMessage {
@@ -14,11 +13,12 @@ interface ChatMessage {
   content: string;
 }
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid, onAgentRequest }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAgentMode, setIsAgentMode] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Fetch chat history on component mount
@@ -49,10 +49,18 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userMessage: ChatMessage = { role: 'user', content: input };
     const promptText = input;
-    setMessages(prev => [...prev, userMessage]);
     setInput('');
+    
+    // Handle Agent Mode differently
+    if (isAgentMode && onAgentRequest && documentUuid) {
+      onAgentRequest(promptText);
+      return;
+    }
+
+    // Regular chat mode
+    const userMessage: ChatMessage = { role: 'user', content: promptText };
+    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
     const assistantMessage: ChatMessage = { role: 'assistant', content: '' };
@@ -126,14 +134,29 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
     <div className="fixed top-0 right-0 w-[25vw] min-w-[300px] max-w-[500px] h-screen bg-card border-l border-border flex flex-col z-30 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border bg-muted/50 min-h-[56px]">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
           <MessageSquare size={18} className="text-primary" />
-          <div>
-            <h3 className="text-sm font-semibold text-foreground m-0 leading-tight">
-              {documentUuid ? 'Document Assistant' : 'AI Assistant'}
-            </h3>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-foreground m-0 leading-tight">
+                {documentUuid ? 'Document Assistant' : 'AI Assistant'}
+              </h3>
+              {documentUuid && onAgentRequest && (
+                <Button
+                  onClick={() => setIsAgentMode(!isAgentMode)}
+                  variant={isAgentMode ? "default" : "outline"}
+                  size="xs"
+                  className="text-xs"
+                >
+                  {isAgentMode ? 'Agent' : 'Chat'}
+                </Button>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground m-0 leading-tight">
-              {documentUuid ? 'Ask about this document' : 'General chat about your documents'}
+              {documentUuid 
+                ? (isAgentMode ? 'Request document edits' : 'Ask about this document')
+                : 'General chat about your documents'
+              }
             </p>
           </div>
         </div>
@@ -216,7 +239,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid }) => {
                   handleSubmit(e);
                 }
               }}
-              placeholder={documentUuid ? "Ask about the document..." : "Ask about your documents..."}
+              placeholder={
+                documentUuid 
+                  ? (isAgentMode ? "Request document changes..." : "Ask about the document...")
+                  : "Ask about your documents..."
+              }
               disabled={isLoading}
               rows={1}
               className="w-full min-h-[40px] max-h-[120px] p-3 border border-input rounded-md bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"

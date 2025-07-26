@@ -83,6 +83,13 @@ class ApiClient {
     });
   }
 
+  async agentEdit(documentUuid: string, promptText: string) {
+    return this.request('/api/v1/documents/agent-edit', {
+      method: 'POST',
+      body: JSON.stringify({ documentUuid, promptText }),
+    });
+  }
+
   async uploadDocument(file: File) {
     try {
       const headers = await this.getAuthHeaders();

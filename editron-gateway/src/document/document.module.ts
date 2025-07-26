@@ -5,11 +5,13 @@ import { DocumentService } from './document.service';
 import { Document } from '../entities/document.entity';
 import { UserFile } from '../entities/user-file.entity';
 import { QueueModule } from '../queue/queue.module';
+import { AiGatewayModule } from '../ai-gateway/ai-gateway.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Document, UserFile]),
     QueueModule,
+    AiGatewayModule,
   ],
   controllers: [DocumentController],
   providers: [DocumentService],
