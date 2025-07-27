@@ -1,26 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { FolderPlus } from 'lucide-react';
+import { FolderPlus, Edit } from 'lucide-react';
 import { apiClient } from '../utils/api';
 import { useToast } from '@/hooks/use-toast';
 
-interface CreateProjectModalProps {
-  isOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  onProjectCreated?: (project: any) => void;
-  trigger?: React.ReactNode;
+interface Project {
+  uuid: string;
+  name: string;
+  description?: string;
+  customInstructions?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export const CreateProjectModal = ({ 
+interface ProjectModalProps {
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onProjectCreated?: (project: Project) => void;
+  onProjectUpdated?: (project: Project) => void;
+  trigger?: React.ReactNode;
+  mode?: 'create' | 'edit';
+  project?: Project;
+}
+
+export const ProjectModal = ({ 
   isOpen, 
   onOpenChange, 
   onProjectCreated,
-  trigger 
-}: CreateProjectModalProps) => {
+  onProjectUpdated,
+  trigger,
+  mode = 'create',
+  project
+}: ProjectModalProps) => {
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -34,6 +49,18 @@ export const CreateProjectModal = ({
   // Use controlled or uncontrolled state
   const isControlled = isOpen !== undefined;
   const dialogOpen = isControlled ? isOpen : internalOpen;
+  
+  // Initialize form data when project changes (for edit mode)
+  useEffect(() => {
+    if (project && mode === 'edit') {
+      setFormData({
+        name: project.name || '',
+        description: project.description || '',
+        customInstructions: project.customInstructions || ''
+      });
+    }
+  }, [project, mode]);
+
   const handleOpenChange = (open: boolean) => {
     if (isControlled) {
       onOpenChange?.(open);
@@ -43,7 +70,9 @@ export const CreateProjectModal = ({
     
     if (!open) {
       // Reset form when modal closes
-      setFormData({ name: '', description: '', customInstructions: '' });
+      if (mode === 'create') {
+        setFormData({ name: '', description: '', customInstructions: '' });
+      }
       setError(null);
     }
   };
@@ -59,29 +88,52 @@ export const CreateProjectModal = ({
     setError(null);
 
     try {
-      const newProject = await apiClient.createProject({
-        name: formData.name.trim(),
-        description: formData.description.trim() || undefined,
-        customInstructions: formData.customInstructions.trim() || undefined,
-      });
+      if (mode === 'create') {
+        const newProject = await apiClient.createProject({
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          customInstructions: formData.customInstructions.trim() || undefined,
+        }) as Project;
 
-      // Show success toast
-      toast({
-        title: "Project created successfully!",
-        description: `"${formData.name.trim()}" has been created.`,
-      });
-      
-      // Reset form and close modal immediately
-      setFormData({ name: '', description: '', customInstructions: '' });
-      setError(null);
-      handleOpenChange(false);
-      
-      // Notify parent component
-      onProjectCreated?.(newProject);
+        toast({
+          title: "Project created successfully!",
+          description: `"${formData.name.trim()}" has been created.`,
+        });
+        
+        // Reset form and close modal immediately
+        setFormData({ name: '', description: '', customInstructions: '' });
+        setError(null);
+        handleOpenChange(false);
+        
+        // Notify parent component
+        onProjectCreated?.(newProject);
+      } else {
+        // Edit mode
+        if (!project?.uuid) {
+          throw new Error('Project UUID is required for editing');
+        }
+
+        const updatedProject = await apiClient.updateProject(project.uuid, {
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          customInstructions: formData.customInstructions.trim() || undefined,
+        }) as Project;
+
+        toast({
+          title: "Project updated successfully!",
+          description: `"${formData.name.trim()}" has been updated.`,
+        });
+        
+        setError(null);
+        handleOpenChange(false);
+        
+        // Notify parent component
+        onProjectUpdated?.(updatedProject);
+      }
       
     } catch (error) {
-      console.error('Failed to create project:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create project');
+      console.error(`Failed to ${mode} project:`, error);
+      setError(error instanceof Error ? error.message : `Failed to ${mode} project`);
     } finally {
       setIsSubmitting(false);
     }
@@ -94,11 +146,24 @@ export const CreateProjectModal = ({
     if (error) setError(null);
   };
 
-  const defaultTrigger = (
-    <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-      <FolderPlus className="w-4 h-4" />
-    </Button>
-  );
+  const getDefaultTrigger = () => {
+    if (mode === 'edit') {
+      return (
+        <Button variant="outline" size="sm">
+          <Edit className="w-4 h-4 mr-2" />
+          Modify
+        </Button>
+      );
+    }
+    return (
+      <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+        <FolderPlus className="w-4 h-4" />
+      </Button>
+    );
+  };
+
+  const getTitle = () => mode === 'create' ? 'Create New Project' : 'Edit Project';
+  const getSubmitText = () => isSubmitting ? (mode === 'create' ? 'Creating...' : 'Updating...') : (mode === 'create' ? 'Create Project' : 'Update Project');
 
   return (
     <Dialog 
@@ -106,11 +171,11 @@ export const CreateProjectModal = ({
       onOpenChange={handleOpenChange}
     >
       <DialogTrigger asChild>
-        {trigger || defaultTrigger}
+        {trigger || getDefaultTrigger()}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -175,11 +240,14 @@ export const CreateProjectModal = ({
               disabled={isSubmitting || !formData.name.trim()}
               className="flex-1"
             >
-              {isSubmitting ? 'Creating...' : 'Create Project'}
+              {getSubmitText()}
             </Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
   );
-}; 
+};
+
+// Export the old name for backward compatibility
+export const CreateProjectModal = ProjectModal; 

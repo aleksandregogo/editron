@@ -7,11 +7,15 @@ import * as mammoth from 'mammoth';
 import { Project } from '../entities/project.entity';
 import { Document, DocumentStatus } from '../entities/document.entity';
 import { User } from '../entities/user.entity';
+import { UserFile } from '../entities/user-file.entity';
+import { KnowledgeItem } from '../entities/knowledge-item.entity';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
 import { generateFullDocumentAgentPrompt } from '../common/prompts/custom-prompts';
 import { diffWords } from 'diff';
 import { ChatHistoryService } from '../chat-history/chat-history.service';
 import { ChatMessageRole } from '../entities/chat-message.entity';
+import { StorageService } from '../storage/storage.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProjectService {
@@ -22,10 +26,16 @@ export class ProjectService {
     private readonly projectRepository: Repository<Project>,
     @InjectRepository(Document)
     private readonly documentRepository: Repository<Document>,
+    @InjectRepository(UserFile)
+    private readonly userFileRepository: Repository<UserFile>,
+    @InjectRepository(KnowledgeItem)
+    private readonly knowledgeRepository: Repository<KnowledgeItem>,
     @InjectQueue('documentProcessingQueue')
     private readonly documentQueue: Queue,
     private readonly aiGatewayService: AiGatewayService,
     private readonly chatHistoryService: ChatHistoryService,
+    private readonly storageService: StorageService,
+    private readonly configService: ConfigService,
   ) {}
 
   // Project methods
@@ -70,6 +80,19 @@ export class ProjectService {
   ): Promise<Project> {
     const project = await this.findByUuid(projectUuid, userId);
 
+    // Validate updates
+    if (updates.name !== undefined && (!updates.name.trim() || updates.name.length > 255)) {
+      throw new BadRequestException('Project name must be between 1 and 255 characters');
+    }
+
+    if (updates.description !== undefined && updates.description.length > 10000) {
+      throw new BadRequestException('Project description must be less than 10000 characters');
+    }
+
+    if (updates.customInstructions !== undefined && updates.customInstructions.length > 50000) {
+      throw new BadRequestException('Custom instructions must be less than 50000 characters');
+    }
+
     Object.assign(project, updates);
     const updatedProject = await this.projectRepository.save(project);
     
@@ -80,8 +103,59 @@ export class ProjectService {
   async delete(projectUuid: string, userId: number): Promise<void> {
     const project = await this.findByUuid(projectUuid, userId);
     
-    await this.projectRepository.remove(project);
-    this.logger.log(`Deleted project ${projectUuid} for user ${userId}`);
+    this.logger.log(`Starting deletion of project ${projectUuid} for user ${userId}`);
+    
+    try {
+      // 1. Get all documents in the project
+      const documents = await this.documentRepository.find({
+        where: { project: { id: project.id }, user: { id: userId } },
+        relations: ['sourceFile'],
+      });
+
+      this.logger.log(`Found ${documents.length} documents to delete for project ${projectUuid}`);
+
+      // 2. Delete files from S3 and clean up UserFile records
+      for (const document of documents) {
+        if (document.sourceFile) {
+          try {
+            // Delete from S3
+            await this.storageService.deleteFile(
+              document.sourceFile.storageBucket,
+              document.sourceFile.storageKey
+            );
+            this.logger.log(`Deleted S3 file: ${document.sourceFile.storageKey}`);
+          } catch (error) {
+            this.logger.warn(`Failed to delete S3 file ${document.sourceFile.storageKey}: ${error.message}`);
+          }
+
+          // Delete UserFile record
+          await this.userFileRepository.remove(document.sourceFile);
+          this.logger.log(`Deleted UserFile record: ${document.sourceFile.uuid}`);
+        }
+      }
+
+      // 3. Delete all knowledge items for this project
+      const deletedKnowledgeItems = await this.knowledgeRepository.delete({
+        project: { id: project.id },
+        user: { id: userId }
+      });
+      this.logger.log(`Deleted ${deletedKnowledgeItems.affected} knowledge items for project ${projectUuid}`);
+
+      // 4. Delete all documents (this will cascade to related entities)
+      const deletedDocuments = await this.documentRepository.delete({
+        project: { id: project.id },
+        user: { id: userId }
+      });
+      this.logger.log(`Deleted ${deletedDocuments.affected} documents for project ${projectUuid}`);
+
+      // 5. Finally delete the project itself
+      await this.projectRepository.remove(project);
+      this.logger.log(`Successfully deleted project ${projectUuid} and all related data`);
+
+    } catch (error) {
+      this.logger.error(`Failed to delete project ${projectUuid}: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to delete project and related data');
+    }
   }
 
   async findById(projectId: number): Promise<Project | null> {
@@ -152,7 +226,8 @@ export class ProjectService {
     const project = await this.findByUuid(projectUuid, userId);
     
     const doc = await this.documentRepository.findOne({ 
-      where: { uuid, project: { id: project.id }, user: { id: userId } } 
+      where: { uuid, project: { id: project.id }, user: { id: userId } },
+      relations: ['sourceFile'],
     });
     if (!doc) {
       throw new NotFoundException(`Document with UUID ${uuid} not found in project ${projectUuid} or access denied.`);
@@ -180,6 +255,46 @@ export class ProjectService {
     this.logger.log(`Updated document ${uuid} for user ${userId}`);
     
     return doc;
+  }
+
+  async deleteDocument(uuid: string, projectUuid: string, userId: number): Promise<void> {
+    const document = await this.findDocumentByProject(uuid, projectUuid, userId);
+    
+    this.logger.log(`Starting deletion of document ${uuid} for user ${userId}`, document.sourceFile);
+    
+    try {
+      // 1. Delete file from S3 if it exists
+      if (document.sourceFile) {
+        try {
+          await this.storageService.deleteFile(
+            document.sourceFile.storageBucket,
+            document.sourceFile.storageKey
+          );
+          this.logger.log(`Deleted S3 file: ${document.sourceFile.storageKey}`);
+        } catch (error) {
+          this.logger.warn(`Failed to delete S3 file ${document.sourceFile.storageKey}: ${error.message}`);
+        }
+
+        // Delete UserFile record
+        await this.userFileRepository.remove(document.sourceFile);
+        this.logger.log(`Deleted UserFile record: ${document.sourceFile.uuid}`);
+      }
+
+      // 2. Delete all knowledge items for this document
+      const deletedKnowledgeItems = await this.knowledgeRepository.delete({
+        document: { id: document.id },
+        user: { id: userId }
+      });
+      this.logger.log(`Deleted ${deletedKnowledgeItems.affected} knowledge items for document ${uuid}`);
+
+      // 3. Delete the document itself
+      await this.documentRepository.remove(document);
+      this.logger.log(`Successfully deleted document ${uuid} and all related data`);
+
+    } catch (error) {
+      this.logger.error(`Failed to delete document ${uuid}: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to delete document and related data');
+    }
   }
 
   async generateAgentSuggestion(

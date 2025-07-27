@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
     }
   };
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     setIsLoading(true);
     try {
       const fetchedProjects = await apiClient.getProjects() as Project[];
@@ -56,17 +57,25 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
       // Set first project as active if none is set
       if (!activeProjectId && fetchedProjects.length > 0) {
         setActiveProjectId(fetchedProjects[0].uuid);
+      } else if (activeProjectId && !fetchedProjects.find(p => p.uuid === activeProjectId)) {
+        // If current active project was deleted, set first available project as active
+        setActiveProjectId(fetchedProjects.length > 0 ? fetchedProjects[0].uuid : null);
+        if (fetchedProjects.length > 0) {
+          navigate(`/project/${fetchedProjects[0].uuid}`);
+        } else {
+          navigate('/');
+        }
       }
     } catch (error) {
       console.error('Failed to fetch projects:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeProjectId, navigate]);
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [fetchProjects]);
 
   const handleProjectClick = (projectUuid: string) => {
     setActiveProjectId(projectUuid);
@@ -75,6 +84,14 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
 
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+
+  // Create a context value to pass to children
+  const layoutContext = {
+    refreshProjects: fetchProjects,
+    projects,
+    activeProjectId,
+    setActiveProjectId
   };
 
   return (
@@ -160,7 +177,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
           <Button 
             onClick={handleLogout} 
             variant="outline" 
-            className="w-full gap-2 border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-gray-500"
+            className="w-full gap-2 border-gray-600 text-gray-100 bg-gray-700 hover:border-gray-500 hover:text-gray-600"
           >
             <LogOut className="w-4 h-4" />
             Logout
@@ -169,7 +186,10 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
       </aside>
       
       <main className="flex-1 flex flex-col min-h-screen ml-80 bg-background">
-        {children}
+        {/* Pass the refresh function to children via React.cloneElement */}
+        {React.cloneElement(children as React.ReactElement, { 
+          refreshProjects: fetchProjects 
+        })}
       </main>
       <Toaster />
     </div>

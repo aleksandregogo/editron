@@ -8,9 +8,11 @@ export class CreateProjectDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(10000)
   description?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(50000)
   customInstructions?: string;
 } 

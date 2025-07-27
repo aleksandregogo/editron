@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import Layout from "./components/Layout";
@@ -24,6 +24,35 @@ interface Project {
   createdAt: string;
   updatedAt: string;
 }
+
+// Component to handle root route logic
+const RootHandler = ({ 
+  projects, 
+  firstProject, 
+  onRefreshProjects 
+}: { 
+  projects: Project[]; 
+  firstProject: Project | undefined; 
+  onRefreshProjects: () => void;
+}) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Refresh projects when landing on root
+    onRefreshProjects();
+  }, [location.pathname, onRefreshProjects]);
+
+  useEffect(() => {
+    // Redirect to first project if available
+    if (firstProject) {
+      navigate(`/project/${firstProject.uuid}`, { replace: true });
+    }
+  }, [firstProject, navigate]);
+
+  // If no projects, this will be handled by the App component's conditional rendering
+  return null;
+};
 
 function App() {
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
@@ -253,7 +282,13 @@ function App() {
       {profile && (
         <Layout profile={profile} onLogout={() => setLoggedIn(false)}>
           <Routes>
-            <Route path="/" element={<Navigate to={firstProject ? `/project/${firstProject.uuid}` : '/'} replace />} />
+            <Route path="/" element={
+              <RootHandler 
+                projects={projects} 
+                firstProject={firstProject}
+                onRefreshProjects={fetchProjects}
+              />
+            } />
             <Route path="/project/:projectUuid" element={<ProjectDashboard />} />
             <Route path="/project/:projectUuid/editor/:uuid" element={<EditorPage />} />
             <Route path="/editor/:uuid" element={<EditorPage />} />

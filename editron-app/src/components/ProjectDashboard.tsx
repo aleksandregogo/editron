@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileText, Calendar, User, Settings, MessageSquare } from 'lucide-react';
+import { Upload, FileText, Calendar, MessageSquare, MoreVertical, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { apiClient } from '../utils/api';
+import { ProjectModal } from './CreateProjectModal';
+import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
 interface Project {
   uuid: string;
@@ -22,7 +25,7 @@ interface Document {
   updatedAt: string;
 }
 
-export const ProjectDashboard = () => {
+export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => void }) => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
@@ -88,6 +91,57 @@ export const ProjectDashboard = () => {
     navigate(`/project/${projectUuid}/editor/${documentUuid}`);
   };
 
+  const handleProjectUpdate = (updatedProject: any) => {
+    setProject(updatedProject);
+    // Refresh the sidebar to reflect the updated project name
+    if (refreshProjects) {
+      refreshProjects();
+    }
+  };
+
+  const handleProjectDelete = async () => {
+    if (!projectUuid) return;
+    
+    try {
+      await apiClient.deleteProject(projectUuid);
+      
+      // Refresh projects to get updated list
+      if (refreshProjects) {
+        await refreshProjects();
+      }
+      
+      // Check if there are any projects left after deletion
+      const remainingProjects = await apiClient.getProjects();
+      
+      if (Array.isArray(remainingProjects) && remainingProjects.length === 0) {
+        // No projects left - navigate to root and show creation dialog
+        navigate('/', { replace: true });
+      } else if (Array.isArray(remainingProjects) && remainingProjects.length > 0) {
+        // Navigate to the first available project
+        navigate(`/project/${remainingProjects[0].uuid}`, { replace: true });
+      } else {
+        // Fallback - navigate to root
+        navigate('/', { replace: true });
+      }
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      throw error;
+    }
+  };
+
+  const handleDocumentDelete = async (documentUuid: string) => {
+    if (!projectUuid) return;
+    
+    try {
+      await apiClient.deleteDocument(documentUuid, projectUuid);
+      // Remove the document from the local state
+      setDocuments(prev => prev.filter(doc => doc.uuid !== documentUuid));
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+      throw error;
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -141,10 +195,18 @@ export const ProjectDashboard = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Settings className="w-4 h-4 mr-2" />
-            Settings
-          </Button>
+          <ProjectModal
+            mode="edit"
+            project={project}
+            onProjectUpdated={handleProjectUpdate}
+          />
+          <DeleteConfirmationDialog
+            title="Delete Project"
+            description={`Are you sure you want to delete "${project.name}"? This will permanently delete the project and all its documents, including files from cloud storage. This action cannot be undone.`}
+            confirmText="Delete Project"
+            onConfirm={handleProjectDelete}
+            itemName={project.name}
+          />
         </div>
       </div>
 
@@ -212,14 +274,60 @@ export const ProjectDashboard = () => {
             {documents.map((doc) => (
               <Card
                 key={doc.uuid}
-                className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => handleDocumentClick(doc.uuid)}
+                className="group cursor-pointer hover:shadow-md transition-shadow"
               >
                 <CardHeader>
-                  <CardTitle className="flex items-start gap-3">
-                    <FileText className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <span className="truncate">{doc.title}</span>
-                  </CardTitle>
+                  <div className="flex items-start justify-between">
+                    <CardTitle 
+                      className="flex items-start gap-3 flex-1"
+                      onClick={() => handleDocumentClick(doc.uuid)}
+                    >
+                      <FileText className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      <span className="truncate">{doc.title}</span>
+                    </CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          className="cursor-pointer"
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            handleDocumentClick(doc.uuid);
+                          }}
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Open
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={(e) => e.preventDefault()}
+                          className="text-red-600 focus:text-red-600 cursor-pointer"
+                        >
+                          <DeleteConfirmationDialog
+                            title="Delete Document"
+                            description={`Are you sure you want to delete "${doc.title}"? This will permanently delete the document and all its associated data, including files from cloud storage. This action cannot be undone.`}
+                            confirmText="Delete Document"
+                            onConfirm={() => handleDocumentDelete(doc.uuid)}
+                            itemName={doc.title}
+                            trigger={
+                              <div className="flex items-center w-full">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </div>
+                            }
+                          />
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                   <CardDescription>
                     <div className="flex items-center justify-between">
                       <span className="capitalize text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">

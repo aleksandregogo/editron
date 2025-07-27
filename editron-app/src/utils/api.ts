@@ -98,7 +98,7 @@ class ApiClient {
   }
 
   async getProject(uuid: string) {
-    return this.request(`/api/v1/projects/${uuid}`);
+    return this.request(`/api/v1/projects/${uuid}/details`);
   }
 
   async createProject(data: { name: string; description?: string; customInstructions?: string }) {
@@ -109,14 +109,14 @@ class ApiClient {
   }
 
   async updateProject(uuid: string, data: { name?: string; description?: string; customInstructions?: string }) {
-    return this.request(`/api/v1/projects/${uuid}`, {
+    return this.request(`/api/v1/projects/${uuid}/update`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
 
   async deleteProject(uuid: string) {
-    return this.request(`/api/v1/projects/${uuid}`, {
+    return this.request(`/api/v1/projects/${uuid}/delete`, {
       method: 'DELETE',
     });
   }
@@ -124,21 +124,21 @@ class ApiClient {
   // Document API methods (now scoped to projects)
   async getDocuments(projectUuid?: string) {
     if (projectUuid) {
-      return this.request(`/api/v1/projects/${projectUuid}/documents`);
+      return this.request(`/api/v1/documents?projectUuid=${projectUuid}`);
     }
     return this.request('/api/v1/documents'); // Legacy endpoint
   }
 
   async getDocument(uuid: string, projectUuid?: string) {
     if (projectUuid) {
-      return this.request(`/api/v1/projects/${projectUuid}/documents/${uuid}`);
+      return this.request(`/api/v1/documents/${uuid}?projectUuid=${projectUuid}`);
     }
     return this.request(`/api/v1/documents/${uuid}`); // Legacy endpoint
   }
 
   async updateDocument(uuid: string, data: { content?: string; title?: string }, projectUuid?: string) {
     if (projectUuid) {
-      return this.request(`/api/v1/projects/${projectUuid}/documents/${uuid}`, {
+      return this.request(`/api/v1/documents/${uuid}?projectUuid=${projectUuid}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       });
@@ -149,9 +149,20 @@ class ApiClient {
     });
   }
 
+  async deleteDocument(uuid: string, projectUuid?: string) {
+    if (projectUuid) {
+      return this.request(`/api/v1/documents/${uuid}?projectUuid=${projectUuid}`, {
+        method: 'DELETE',
+      });
+    }
+    return this.request(`/api/v1/documents/${uuid}`, {
+      method: 'DELETE',
+    });
+  }
+
   async agentEdit(documentUuid: string, promptText: string, projectUuid?: string) {
     if (projectUuid) {
-      return this.request(`/api/v1/projects/${projectUuid}/documents/agent-edit`, {
+      return this.request(`/api/v1/documents/agent-edit?projectUuid=${projectUuid}`, {
         method: 'POST',
         body: JSON.stringify({ documentUuid, promptText }),
       });
@@ -169,7 +180,7 @@ class ApiClient {
       formData.append('file', file);
 
       const uploadEndpoint = projectUuid 
-        ? `/api/v1/projects/${projectUuid}/documents/upload-and-preview`
+        ? `/api/v1/documents/upload-and-preview?projectUuid=${projectUuid}`
         : '/api/v1/documents/upload-and-preview';
       
       const response = await fetch(`${this.baseUrl}${uploadEndpoint}`, {
