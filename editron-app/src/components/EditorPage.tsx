@@ -1,10 +1,32 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import TiptapEditor from './TiptapEditor';
 import { AgentReviewModal } from './Diff/AgentReviewModal';
 import { apiClient } from '../utils/api';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Clock } from 'lucide-react';
+
+// Global state for agent request function
+let globalAgentRequestFunction: ((promptText: string) => void) | null = null;
+
+// Global state for adding messages to chat history
+let globalAddMessageFunction: ((message: { role: 'user' | 'assistant'; content: string }) => void) | null = null;
+
+export const setGlobalAgentRequest = (fn: ((promptText: string) => void) | null) => {
+  globalAgentRequestFunction = fn;
+};
+
+export const getGlobalAgentRequest = () => globalAgentRequestFunction;
+
+export const setGlobalAddMessage = (fn: ((message: { role: 'user' | 'assistant'; content: string }) => void) | null) => {
+  globalAddMessageFunction = fn;
+};
+
+export const addMessageToChat = (message: { role: 'user' | 'assistant'; content: string }) => {
+  if (globalAddMessageFunction) {
+    globalAddMessageFunction(message);
+  }
+};
 
 interface Document {
   uuid: string;
@@ -99,13 +121,31 @@ const EditorPage = () => {
     try {
       const response = await apiClient.agentEdit(document.uuid, promptText, projectUuid) as any;
       setAgentDiffHtml(response.diffHtml);
+      
+      // Add agent response to chat history
+      addMessageToChat({
+        role: 'assistant',
+        content: `I've analyzed your request and prepared the changes. Please review the proposed modifications below.`
+      });
     } catch (error) {
       console.error('Agent edit failed:', error);
       setIsAgentModalOpen(false);
+      
+      // Add error response to chat history
+      addMessageToChat({
+        role: 'assistant',
+        content: 'Sorry, I encountered an error while processing your request. Please try again.'
+      });
     } finally {
       setIsAgentLoading(false);
     }
   };
+
+  // Set global agent request function when component mounts
+  useEffect(() => {
+    setGlobalAgentRequest(handleAgentRequest);
+    return () => setGlobalAgentRequest(null);
+  }, [document?.uuid, projectUuid]);
 
   const handleAgentConfirm = async (finalContent: string) => {
     if (!document) return;

@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Send, Bot, User, ChevronLeft } from 'lucide-react';
+import { MessageSquare, Send, Bot, User, ChevronLeft, ChevronDown } from 'lucide-react';
 import { apiClient } from '../utils/api';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { setGlobalAddMessage } from './EditorPage';
 
 interface RightSidebarProps {
   isCollapsed: boolean;
@@ -58,6 +60,16 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
     fetchHistory();
   }, [fetchHistory]);
 
+  // Set global add message function
+  useEffect(() => {
+    const addMessage = (message: { role: 'user' | 'assistant'; content: string }) => {
+      setMessages(prev => [...prev, message]);
+    };
+    
+    setGlobalAddMessage(addMessage);
+    return () => setGlobalAddMessage(null);
+  }, []);
+
   // Auto-scroll to bottom
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -72,6 +84,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
     const promptText = input;
     setInput('');
     
+    // Add user message to chat history for both modes
+    const userMessage: ChatMessage = { role: 'user', content: promptText };
+    setMessages(prev => [...prev, userMessage]);
+    
     // Handle Agent Mode differently
     if (isAgentMode && isEditorPage && onAgentRequest) {
       onAgentRequest(promptText);
@@ -79,8 +95,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
     }
 
     // Regular chat mode
-    const userMessage: ChatMessage = { role: 'user', content: promptText };
-    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
     const assistantMessage: ChatMessage = { role: 'assistant', content: '' };
@@ -153,19 +167,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
         <div className="flex items-center gap-3">
           <MessageSquare size={20} className="text-primary" />
           <span className="text-sm font-semibold text-foreground">AI Assistant</span>
-          {isEditorPage && (
-            <Button
-              onClick={() => {
-                console.log('Switching from', isAgentMode ? 'Agent' : 'Ask', 'to', isAgentMode ? 'Ask' : 'Agent');
-                setIsAgentMode(!isAgentMode);
-              }}
-              variant={isAgentMode ? "default" : "secondary"}
-              size="sm"
-              className="h-8 px-3 text-xs font-medium border border-border hover:bg-primary hover:text-primary-foreground"
-            >
-              {isAgentMode ? 'Agent' : 'Ask'}
-            </Button>
-          )}
         </div>
         <Button
           onClick={onToggleCollapse}
@@ -236,8 +237,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
       
       {/* Input Form */}
       <div className="p-4 border-t border-border bg-card flex-shrink-0">
-        <form onSubmit={handleSubmit} className="flex gap-2 items-center">
-          <div className="flex-1">
+        <form onSubmit={handleSubmit} className="flex gap-3 items-end">
+          <div className="flex-1 relative">
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -253,18 +254,56 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
                   : "Ask about your documents..."
               }
               disabled={isLoading}
-              rows={1}
-              className="w-full min-h-[44px] max-h-[120px] p-3 border border-input rounded-md bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
+              rows={3}
+              className="w-full min-h-[80px] max-h-[200px] p-4 pr-16 pb-8 border border-input rounded-lg bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
             />
+            
+            {/* Mode Dropdown - bottom-left, only visible on editor pages */}
+            {isEditorPage && (
+              <div className="absolute bottom-3 left-3">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      {isAgentMode ? 'Agent' : 'Ask'}
+                      <ChevronDown size={12} className="ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-24">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsAgentMode(true);
+                      }}
+                      className={isAgentMode ? "bg-accent" : "" + "cursor-pointer"}
+                    >
+                      Agent
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsAgentMode(false);
+                      }}
+                      className={!isAgentMode ? "bg-accent" : "" + "cursor-pointer"}
+                    >
+                      Ask
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+            
+            {/* Send Button - bottom-right */}
+            <Button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              size="sm"
+              className="absolute bottom-3 right-3 w-8 h-8 p-0 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <Send size={14} />
+            </Button>
           </div>
-          <Button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            size="sm"
-            className="w-11 h-11 p-0 flex-shrink-0"
-          >
-            <Send size={16} />
-          </Button>
         </form>
       </div>
     </div>

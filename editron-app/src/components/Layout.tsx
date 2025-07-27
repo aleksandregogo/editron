@@ -1,14 +1,14 @@
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
-import React from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Folder, FolderPlus, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { LogOut, FolderPlus, Folder, ChevronLeft, ChevronRight } from 'lucide-react';
-import { apiClient } from '../utils/api';
 import { CreateProjectModal } from './CreateProjectModal';
 import { RightSidebar } from './RightSidebar';
 import { Toaster } from '@/components/ui/toaster';
+import { apiClient } from '../utils/api';
+import { getGlobalAgentRequest } from './EditorPage';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { invoke } from '@tauri-apps/api/core';
 
 interface UserProfile {
   id: number;
@@ -31,6 +31,7 @@ interface LayoutProps {
   profile: UserProfile;
   children: React.ReactNode;
   onLogout: () => void;
+  onAgentRequest?: (promptText: string) => void;
 }
 
 
@@ -41,24 +42,19 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Sidebar states
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
 
-  // Check if we're on a page that should show the right sidebar
-  const shouldShowRightSidebar = location.pathname.includes('/project/') && 
-    (location.pathname.includes('/editor/') || !!location.pathname.match(/\/project\/[^\/]+$/));
+  // Get agent request function from global state if available
+  const onAgentRequest = getGlobalAgentRequest() || undefined;
 
-  // Extract document UUID and project UUID from URL
-  const documentUuid = location.pathname.includes('/editor/') 
-    ? location.pathname.split('/editor/')[1]?.split('/')[0] 
-    : undefined;
-  
-  const projectUuid = location.pathname.includes('/project/') 
-    ? location.pathname.split('/project/')[1]?.split('/')[0] 
-    : undefined;
+  // Extract document UUID from URL for editor pages
+  const documentUuid = location.pathname.includes('/editor/') ? location.pathname.split('/editor/')[1] : undefined;
+  const projectUuid = location.pathname.includes('/project/') ? location.pathname.split('/project/')[1]?.split('/')[0] : undefined;
+
+  const shouldShowRightSidebar = location.pathname.includes('/project/') &&
+    (location.pathname.includes('/editor/') || location.pathname.split('/').length === 2);
 
   useEffect(() => {
     setShowRightSidebar(shouldShowRightSidebar);
@@ -69,7 +65,8 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
       await invoke("logout");
       onLogout();
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error('Logout failed:', error);
+      onLogout();
     }
   };
 
@@ -79,26 +76,22 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
       const fetchedProjects = await apiClient.getProjects() as Project[];
       setProjects(fetchedProjects);
       
-      if (!activeProjectId && fetchedProjects.length > 0) {
+      // Set active project based on URL
+      if (projectUuid && fetchedProjects.some(p => p.uuid === projectUuid)) {
+        setActiveProjectId(projectUuid);
+      } else if (fetchedProjects.length > 0 && !activeProjectId) {
         setActiveProjectId(fetchedProjects[0].uuid);
-      } else if (activeProjectId && !fetchedProjects.find(p => p.uuid === activeProjectId)) {
-        setActiveProjectId(fetchedProjects.length > 0 ? fetchedProjects[0].uuid : null);
-        if (fetchedProjects.length > 0) {
-          navigate(`/project/${fetchedProjects[0].uuid}`);
-        } else {
-          navigate('/');
-        }
       }
     } catch (error) {
       console.error('Failed to fetch projects:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [activeProjectId, navigate]);
+  }, [activeProjectId, navigate, projectUuid]);
 
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+  }, [activeProjectId, navigate, fetchProjects]);
 
   const handleProjectClick = (projectUuid: string) => {
     setActiveProjectId(projectUuid);
@@ -260,6 +253,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
             onToggleCollapse={() => setIsRightSidebarCollapsed(!isRightSidebarCollapsed)}
             documentUuid={documentUuid}
             projectUuid={projectUuid}
+            onAgentRequest={onAgentRequest}
           />
         </div>
       )}
