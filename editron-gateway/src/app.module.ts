@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { DocumentModule } from './document/document.module';
+
 import { AiGatewayModule } from './ai-gateway/ai-gateway.module';
 import { IndexingModule } from './indexing/indexing.module';
 import { ChatModule } from './chat/chat.module';
@@ -39,7 +39,7 @@ import { Project } from './entities/project.entity';
     }),
     AuthModule,
     UserModule,
-    DocumentModule,
+
     AiGatewayModule,
     IndexingModule,
     ChatModule,
