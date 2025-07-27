@@ -1,6 +1,6 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -41,21 +41,18 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
   });
 
   useEffect(() => {
+    if (editor && editable !== editor.isEditable) {
+      editor.setEditable(editable);
+    }
+  }, [editor, editable]);
+
+  useEffect(() => {
     if (editor && initialContent && editor.getHTML() !== initialContent) {
-      editor.commands.setContent(initialContent);
+      editor.commands.setContent(initialContent, false);
     }
   }, [editor, initialContent]);
 
-  if (!editor) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 p-16 text-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-muted-foreground">Loading editor...</p>
-      </div>
-    );
-  }
-
-  const ToolbarButton = ({ 
+  const ToolbarButton = useCallback(({ 
     onClick, 
     isActive = false, 
     disabled = false, 
@@ -78,7 +75,16 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
     >
       {children}
     </Button>
-  );
+  ), []);
+
+  if (!editor) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 p-16 text-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-muted-foreground">Loading editor...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-border rounded-lg shadow-sm overflow-hidden flex flex-col min-h-[600px]">

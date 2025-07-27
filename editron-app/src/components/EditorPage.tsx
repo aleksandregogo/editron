@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import TiptapEditor from './TiptapEditor';
-import { ChatSidebar } from './Chat/ChatSidebar';
 import { AgentReviewModal } from './Diff/AgentReviewModal';
 import { apiClient } from '../utils/api';
 import { Button } from '@/components/ui/button';
@@ -29,9 +28,6 @@ const EditorPage = () => {
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
   const [isAgentLoading, setIsAgentLoading] = useState(false);
   const [agentDiffHtml, setAgentDiffHtml] = useState<string | null>(null);
-  
-  // Chat history refresh function - use useRef to avoid useState calling the function
-  const refreshChatHistoryRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     if (uuid) {
@@ -105,19 +101,9 @@ const EditorPage = () => {
       setAgentDiffHtml(response.diffHtml);
     } catch (error) {
       console.error('Agent edit failed:', error);
-      // TODO: Show error toast
       setIsAgentModalOpen(false);
     } finally {
       setIsAgentLoading(false);
-      
-      // Refresh chat history after a small delay to ensure modal state has settled
-      if (refreshChatHistoryRef.current) {
-        setTimeout(() => {
-          refreshChatHistoryRef.current!().catch((error: any) => {
-            console.error('Error refreshing chat history:', error);
-          });
-        }, 250); // Small delay to let React finish state updates
-      }
     }
   };
 
@@ -130,7 +116,6 @@ const EditorPage = () => {
       setAgentDiffHtml(null);
     } catch (error) {
       console.error('Failed to apply agent changes:', error);
-      // TODO: Show error toast
     }
   };
 
@@ -213,10 +198,10 @@ const EditorPage = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card px-6 py-4">
-        <div className="flex items-center justify-between max-w-6xl mx-auto">
+      <header className="border-b border-border bg-card px-6 py-4 flex-shrink-0">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')}
@@ -253,23 +238,13 @@ const EditorPage = () => {
       </header>
 
       {/* Editor Content */}
-      <div className="flex-1 bg-gray-50 dark:bg-gray-900">
-        <div className="mr-96 transition-all duration-300">
-          <TiptapEditor
-            initialContent={document.content}
-            onContentChange={handleContentChange}
-            editable={document.status === 'READY'}
-          />
-        </div>
+      <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        <TiptapEditor
+          initialContent={document.content}
+          onContentChange={handleContentChange}
+          editable={document.status === 'READY'}
+        />
       </div>
-
-      {/* Chat Sidebar */}
-      <ChatSidebar 
-        documentUuid={document.uuid} 
-        projectUuid={projectUuid}
-        onAgentRequest={handleAgentRequest} 
-        onHistoryRefresh={(refreshFn) => { refreshChatHistoryRef.current = refreshFn; }}
-      />
 
       {/* Agent Review Modal */}
       <AgentReviewModal

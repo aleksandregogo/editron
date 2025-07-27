@@ -175,7 +175,7 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
   }
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6">
+    <div className="flex-1 flex flex-col p-6 space-y-6 h-full overflow-y-auto">
       {/* Project Header */}
       <div className="flex items-start justify-between">
         <div>
