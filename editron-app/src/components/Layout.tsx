@@ -81,21 +81,25 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
         setActiveProjectId(projectUuid);
       } else if (fetchedProjects.length > 0 && !activeProjectId) {
         setActiveProjectId(fetchedProjects[0].uuid);
+      } else if (fetchedProjects.length === 0) {
+        setActiveProjectId(null);
       }
     } catch (error) {
       console.error('Failed to fetch projects:', error);
+      setProjects([]);
+      setActiveProjectId(null);
     } finally {
       setIsLoading(false);
     }
-  }, [activeProjectId, navigate, projectUuid]);
+  }, [activeProjectId, projectUuid]);
 
   useEffect(() => {
     fetchProjects();
-  }, [activeProjectId, navigate, fetchProjects]);
+  }, [fetchProjects]);
 
   const handleProjectClick = (projectUuid: string) => {
     setActiveProjectId(projectUuid);
-    navigate(`/project/${projectUuid}`);
+    navigate(`/project/${projectUuid}`, { replace: true });
   };
 
   const isActive = (path: string) => {
@@ -162,9 +166,12 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
                 </h4>
                                   <CreateProjectModal
                     onProjectCreated={(newProject) => {
-                      setProjects(prev => [newProject, ...prev]);
-                      setActiveProjectId(newProject.uuid);
-                      navigate(`/project/${newProject.uuid}`);
+                      if (newProject && newProject.uuid) {
+                        setProjects(prev => [newProject, ...prev]);
+                        setActiveProjectId(newProject.uuid);
+                        // Navigate immediately to avoid any race conditions
+                        window.location.href = `/project/${newProject.uuid}`;
+                      }
                     }}
                     trigger={
                       <Button

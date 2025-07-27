@@ -57,7 +57,16 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
       setDocuments(documentsData as Document[]);
     } catch (error) {
       console.error('Failed to fetch project data:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load project');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load project';
+      setError(errorMessage);
+      
+      // If it's a 404 error, the project might not exist
+      if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+        // Navigate to root to let the app handle project selection
+        setTimeout(() => {
+          navigate('/', { replace: true });
+        }, 2000);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -118,7 +127,13 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
         navigate('/', { replace: true });
       } else if (Array.isArray(remainingProjects) && remainingProjects.length > 0) {
         // Navigate to the first available project
-        navigate(`/project/${remainingProjects[0].uuid}`, { replace: true });
+        const firstRemainingProject = remainingProjects[0];
+        if (firstRemainingProject && firstRemainingProject.uuid) {
+          navigate(`/project/${firstRemainingProject.uuid}`, { replace: true });
+        } else {
+          // Fallback - navigate to root
+          navigate('/', { replace: true });
+        }
       } else {
         // Fallback - navigate to root
         navigate('/', { replace: true });

@@ -45,10 +45,20 @@ const RootHandler = ({
 
   useEffect(() => {
     // Redirect to first project if available
-    if (firstProject) {
-      navigate(`/project/${firstProject.uuid}`, { replace: true });
+    if (firstProject && firstProject.uuid && projects.length > 0) {
+      // Double-check that the firstProject is actually in the projects array
+      const projectExists = projects.some(p => p.uuid === firstProject.uuid);
+      if (projectExists) {
+        navigate(`/project/${firstProject.uuid}`, { replace: true });
+      } else {
+        // If the firstProject is not in the projects array, use the first available project
+        const firstAvailableProject = projects[0];
+        if (firstAvailableProject && firstAvailableProject.uuid) {
+          navigate(`/project/${firstAvailableProject.uuid}`, { replace: true });
+        }
+      }
     }
-  }, [firstProject, navigate]);
+  }, [firstProject, navigate, projects]);
 
   // If no projects, this will be handled by the App component's conditional rendering
   return null;
@@ -144,6 +154,7 @@ function App() {
         setShowWelcome(false);
       }
     } catch (error) {
+      console.error('Failed to fetch projects:', error);
       setProjects([]);
       const hasSeenWelcome = localStorage.getItem('editron_welcome_seen');
       if (!hasSeenWelcome) {
@@ -161,10 +172,18 @@ function App() {
     localStorage.setItem('editron_welcome_seen', 'true');
   };
 
-  const handleProjectCreated = () => {
+  const handleProjectCreated = async (newProject?: Project) => {
     setShowCreateProject(false);
     setShowWelcome(false);
-    fetchProjects();
+    
+    // If we have a new project, navigate to it immediately
+    if (newProject && newProject.uuid) {
+      // Navigate immediately to avoid any race conditions
+      window.location.href = `/project/${newProject.uuid}`;
+    } else {
+      // Fallback: refresh projects and let RootHandler handle navigation
+      await fetchProjects();
+    }
   };
 
   const handleLogin = async () => {
