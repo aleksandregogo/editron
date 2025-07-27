@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 
 interface ChatSidebarProps {
   documentUuid?: string;
+  projectUuid?: string;
   onAgentRequest?: (promptText: string) => void;
   onHistoryRefresh?: (refreshFn: () => Promise<void>) => void;
 }
@@ -14,7 +15,7 @@ interface ChatMessage {
   content: string;
 }
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid, onAgentRequest, onHistoryRefresh }) => {
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid, projectUuid, onAgentRequest, onHistoryRefresh }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -81,7 +82,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ documentUuid, onAgentR
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      const reader = await apiClient.chatQuery(promptText, documentUuid);
+      const reader = await apiClient.chatQuery(promptText, documentUuid, projectUuid);
       
       const decoder = new TextDecoder();
       let done = false;

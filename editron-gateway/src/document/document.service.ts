@@ -11,6 +11,7 @@ import { generateFullDocumentAgentPrompt } from '../common/prompts/custom-prompt
 import { diffWords } from 'diff';
 import { ChatHistoryService } from '../chat-history/chat-history.service';
 import { ChatMessageRole } from '../entities/chat-message.entity';
+import { ProjectService } from '../project/project.service';
 
 @Injectable()
 export class DocumentService {
@@ -23,12 +24,17 @@ export class DocumentService {
     private readonly documentQueue: Queue,
     private readonly aiGatewayService: AiGatewayService,
     private readonly chatHistoryService: ChatHistoryService,
+    private readonly projectService: ProjectService,
   ) {}
 
-  async createFromUpload(user: User, fileBuffer: Buffer, originalName: string): Promise<Document> {
-    // 1. Create initial Document record
+  async createFromUpload(user: User, projectUuid: string, fileBuffer: Buffer, originalName: string): Promise<Document> {
+    // 1. Verify project ownership
+    const project = await this.projectService.findByUuid(projectUuid, user.id);
+    
+    // 2. Create initial Document record
     const doc = this.documentRepository.create({
       user,
+      project,
       title: originalName.replace(/\.docx$/, ''),
       status: DocumentStatus.PROCESSING,
       content: '<p>Processing document...</p>',
@@ -55,6 +61,7 @@ export class DocumentService {
     // 3. Enqueue background job for indexing and R2 upload
     await this.documentQueue.add('process-document-indexing', {
       documentId: doc.id,
+      projectId: project.id,
       userId: user.id,
       fileBuffer: Array.from(fileBuffer),
       originalName,
@@ -72,6 +79,16 @@ export class DocumentService {
     });
   }
 
+  async findAllForProject(projectUuid: string, userId: number): Promise<Document[]> {
+    // Verify project ownership first
+    const project = await this.projectService.findByUuid(projectUuid, userId);
+    
+    return this.documentRepository.find({
+      where: { project: { id: project.id }, user: { id: userId } },
+      order: { updatedAt: 'DESC' },
+    });
+  }
+
   async findOneByUser(uuid: string, userId: number): Promise<Document> {
     const doc = await this.documentRepository.findOne({ 
       where: { uuid, user: { id: userId } } 
@@ -82,12 +99,26 @@ export class DocumentService {
     return doc;
   }
 
+  async findOneByProject(uuid: string, projectUuid: string, userId: number): Promise<Document> {
+    // Verify project ownership first
+    const project = await this.projectService.findByUuid(projectUuid, userId);
+    
+    const doc = await this.documentRepository.findOne({ 
+      where: { uuid, project: { id: project.id }, user: { id: userId } } 
+    });
+    if (!doc) {
+      throw new NotFoundException(`Document with UUID ${uuid} not found in project ${projectUuid} or access denied.`);
+    }
+    return doc;
+  }
+
   async updateDocument(
     uuid: string, 
+    projectUuid: string, 
     userId: number, 
     updateData: { content?: string; title?: string }
   ): Promise<Document> {
-    const doc = await this.findOneByUser(uuid, userId);
+    const doc = await this.findOneByProject(uuid, projectUuid, userId);
     
     if (updateData.content !== undefined) {
       doc.content = updateData.content;
@@ -105,6 +136,7 @@ export class DocumentService {
 
   async generateAgentSuggestion(
     userId: number,
+    projectUuid: string,
     documentUuid: string,
     promptText: string,
   ): Promise<{ originalContent: string; suggestedContent: string; diffHtml: string; }> {
@@ -112,7 +144,7 @@ export class DocumentService {
     await this.chatHistoryService.addMessage(userId, ChatMessageRole.USER, promptText);
 
     // 1. Fetch the document and apply guardrails
-    const document = await this.findOneByUser(documentUuid, userId);
+    const document = await this.findOneByProject(documentUuid, projectUuid, userId);
     const originalContent = document.content;
 
     // GUARDRAIL: Add a size limit check.

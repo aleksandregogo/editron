@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, CreateDateColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from './user.entity';
+import { Defentity } from './defentity.entity';
 
 export enum ChatMessageRole {
   USER = 'user',
@@ -8,10 +9,7 @@ export enum ChatMessageRole {
 }
 
 @Entity('chat_messages')
-export class ChatMessage {
-  @PrimaryGeneratedColumn()
-  id: number;
-
+export class ChatMessage extends Defentity {
   @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: false })
   @JoinColumn({ name: 'user_id' })
   @Index()
@@ -29,7 +27,4 @@ export class ChatMessage {
 
   @Column({ type: 'int', default: 0 })
   tokens: number;
-
-  @CreateDateColumn()
-  createdAt: Date;
 } 

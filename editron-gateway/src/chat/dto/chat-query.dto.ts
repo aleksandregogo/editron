@@ -14,6 +14,10 @@ export class ChatQueryDto {
   @IsOptional()
   documentUuid?: string;
 
+  @IsUUID()
+  @IsOptional()
+  projectUuid?: string;
+
   @IsEnum(ChatMode)
   @IsOptional()
   mode?: ChatMode = ChatMode.CHAT; // Default to chat mode

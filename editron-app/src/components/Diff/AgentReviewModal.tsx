@@ -295,6 +295,7 @@ export const AgentReviewModal: React.FC<AgentReviewModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogTitle hidden></DialogTitle>
       <DialogContent className="max-w-6xl w-full h-[90vh] flex flex-col p-0 shadow-2xl">
         {isLoading ? <LoadingSkeleton /> : (
           <>

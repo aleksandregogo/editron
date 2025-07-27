@@ -7,6 +7,7 @@ import { UserFile } from '../entities/user-file.entity';
 import { QueueModule } from '../queue/queue.module';
 import { AiGatewayModule } from '../ai-gateway/ai-gateway.module';
 import { ChatHistoryModule } from '../chat-history/chat-history.module';
+import { ProjectModule } from '../project/project.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ChatHistoryModule } from '../chat-history/chat-history.module';
     QueueModule,
     AiGatewayModule,
     ChatHistoryModule,
+    ProjectModule,
   ],
   controllers: [DocumentController],
   providers: [DocumentService],

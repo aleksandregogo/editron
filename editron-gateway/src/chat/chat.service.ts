@@ -9,7 +9,7 @@ import { KnowledgeItem } from '../entities/knowledge-item.entity';
 import { generateRagChatCompletionPrompt, generateDocumentChatPrompt, generateDocumentAgentPrompt } from '../common/prompts/custom-prompts';
 import { ChatMode } from './dto/chat-query.dto';
 import { ChatHistoryService } from '../chat-history/chat-history.service';
-import { ChatMessageRole } from '../entities/chat-message.entity';
+import { ProjectService } from '../project/project.service';
 
 @Injectable()
 export class ChatService {
@@ -22,12 +22,14 @@ export class ChatService {
     @InjectRepository(KnowledgeItem)
     private readonly knowledgeRepository: Repository<KnowledgeItem>,
     private readonly chatHistoryService: ChatHistoryService,
+    private readonly projectService: ProjectService,
   ) {}
 
   async processUserQueryStream(
     user: UserInfo,
     promptText: string,
     documentUuid?: string,
+    projectUuid?: string,
     mode: ChatMode = ChatMode.CHAT,
   ): Promise<Observable<string>> {
     const userId = user.userLocalId;
@@ -57,13 +59,17 @@ export class ChatService {
           throw new Error('Document not found or access denied.');
         }
         qb.andWhere('item.document_id = :documentId', { documentId: doc.id });
+      } else if (projectUuid) {
+        // PROJECT MODE: Scope search to the specific project
+        const project = await this.projectService.findByUuid(projectUuid, userId);
+        qb.andWhere('item.project_id = :projectId', { projectId: project.id });
       }
 
       const results = await qb.limit(k).getMany();
       relevantChunks = results.map(item => 
         `(From: ${item.metadata?.title || 'document'})\n${item.content}`
       );
-      this.logger.log(`User ${userId} RAG found ${relevantChunks.length} chunks. Mode: ${documentUuid ? 'Editor' : 'General'}`);
+      this.logger.log(`User ${userId} RAG found ${relevantChunks.length} chunks. Mode: ${documentUuid ? 'Editor' : projectUuid ? 'Project' : 'General'}`);
     }
 
     // Get chat history with token budget
@@ -74,6 +80,18 @@ export class ChatService {
     const historyTokenBudget = maxTokens - reservedForOutput - promptTokens - contextTokens;
 
     const chatHistory = await this.chatHistoryService.getRecentHistory(userId, historyTokenBudget);
+    
+    // Get project custom instructions if available
+    let customInstructions = '';
+    if (projectUuid) {
+      try {
+        const project = await this.projectService.findByUuid(projectUuid, userId);
+        customInstructions = project.customInstructions || '';
+      } catch (error) {
+        this.logger.warn(`Could not fetch project ${projectUuid} for custom instructions: ${error.message}`);
+      }
+    }
+    
     let finalMessages: { role: string; content: string }[];
 
     if (documentUuid) {
@@ -84,8 +102,8 @@ export class ChatService {
         finalMessages = generateDocumentChatPrompt(relevantChunks, chatHistory, promptText);
       }
     } else {
-      // GENERAL MODE - Always conversational
-      finalMessages = generateRagChatCompletionPrompt(relevantChunks, chatHistory, promptText, '');
+      // GENERAL/PROJECT MODE - Always conversational
+      finalMessages = generateRagChatCompletionPrompt(relevantChunks, chatHistory, promptText, customInstructions);
     }
 
     // Convert to ChatMessage format and call LLM

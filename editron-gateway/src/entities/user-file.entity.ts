@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from './user.entity';
+import { Defentity } from './defentity.entity';
 
 export enum UserFileStatus {
   UPLOADING = 'UPLOADING',
@@ -8,10 +9,7 @@ export enum UserFileStatus {
 }
 
 @Entity('user_files')
-export class UserFile {
-  @PrimaryGeneratedColumn()
-  id: number;
-
+export class UserFile extends Defentity {
   @Column({ type: 'uuid', unique: true, generated: 'uuid' })
   uuid: string;
 
@@ -41,10 +39,4 @@ export class UserFile {
     default: UserFileStatus.UPLOADING,
   })
   status: UserFileStatus;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 } 

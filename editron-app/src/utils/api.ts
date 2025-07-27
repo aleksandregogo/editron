@@ -67,36 +67,112 @@ class ApiClient {
     }
   }
 
-  // Document API methods
-  async getDocuments() {
-    return this.request('/api/v1/documents');
+  // Project API methods
+  async get(endpoint: string) {
+    return this.request(endpoint);
   }
 
-  async getDocument(uuid: string) {
-    return this.request(`/api/v1/documents/${uuid}`);
+  async post(endpoint: string, data: any) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
-  async updateDocument(uuid: string, data: { content?: string; title?: string }) {
+  async patch(endpoint: string, data: any) {
+    return this.request(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async delete(endpoint: string) {
+    return this.request(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
+  // Project API methods
+  async getProjects() {
+    return this.request('/api/v1/projects');
+  }
+
+  async getProject(uuid: string) {
+    return this.request(`/api/v1/projects/${uuid}`);
+  }
+
+  async createProject(data: { name: string; description?: string; customInstructions?: string }) {
+    return this.request('/api/v1/projects', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateProject(uuid: string, data: { name?: string; description?: string; customInstructions?: string }) {
+    return this.request(`/api/v1/projects/${uuid}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteProject(uuid: string) {
+    return this.request(`/api/v1/projects/${uuid}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Document API methods (now scoped to projects)
+  async getDocuments(projectUuid?: string) {
+    if (projectUuid) {
+      return this.request(`/api/v1/projects/${projectUuid}/documents`);
+    }
+    return this.request('/api/v1/documents'); // Legacy endpoint
+  }
+
+  async getDocument(uuid: string, projectUuid?: string) {
+    if (projectUuid) {
+      return this.request(`/api/v1/projects/${projectUuid}/documents/${uuid}`);
+    }
+    return this.request(`/api/v1/documents/${uuid}`); // Legacy endpoint
+  }
+
+  async updateDocument(uuid: string, data: { content?: string; title?: string }, projectUuid?: string) {
+    if (projectUuid) {
+      return this.request(`/api/v1/projects/${projectUuid}/documents/${uuid}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    }
     return this.request(`/api/v1/documents/${uuid}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
 
-  async agentEdit(documentUuid: string, promptText: string) {
+  async agentEdit(documentUuid: string, promptText: string, projectUuid?: string) {
+    if (projectUuid) {
+      return this.request(`/api/v1/projects/${projectUuid}/documents/agent-edit`, {
+        method: 'POST',
+        body: JSON.stringify({ documentUuid, promptText }),
+      });
+    }
     return this.request('/api/v1/documents/agent-edit', {
       method: 'POST',
       body: JSON.stringify({ documentUuid, promptText }),
     });
   }
 
-  async uploadDocument(file: File) {
+  async uploadDocument(file: File, projectUuid?: string) {
     try {
       const headers = await this.getAuthHeaders();
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`${this.baseUrl}/api/v1/documents/upload-and-preview`, {
+      const uploadEndpoint = projectUuid 
+        ? `/api/v1/projects/${projectUuid}/documents/upload-and-preview`
+        : '/api/v1/documents/upload-and-preview';
+      
+      const response = await fetch(`${this.baseUrl}${uploadEndpoint}`, {
         method: 'POST',
         headers: {
           // Remove Content-Type to let browser set it with boundary for FormData
@@ -122,7 +198,7 @@ class ApiClient {
     return this.request('/api/v1/chat/history');
   }
 
-  async chatQuery(promptText: string, documentUuid?: string, mode: 'chat' | 'agent' = 'chat'): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+  async chatQuery(promptText: string, documentUuid?: string, projectUuid?: string, mode: 'chat' | 'agent' = 'chat'): Promise<ReadableStreamDefaultReader<Uint8Array>> {
     try {
       console.log(`[API] Starting chat query with documentUuid: ${documentUuid || 'none'}, mode: ${mode}`);
       const headers = await this.getAuthHeaders();
@@ -136,7 +212,8 @@ class ApiClient {
         body: JSON.stringify({ 
           promptText, 
           mode,
-          ...(documentUuid && { documentUuid }) 
+          ...(documentUuid && { documentUuid }),
+          ...(projectUuid && { projectUuid })
         }),
       });
 

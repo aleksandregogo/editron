@@ -9,11 +9,13 @@ import { IndexingModule } from './indexing/indexing.module';
 import { ChatModule } from './chat/chat.module';
 import { ChatHistoryModule } from './chat-history/chat-history.module';
 import { RedisModule } from './redis/redis.module';
+import { ProjectModule } from './project/project.module';
 import { User } from './entities/user.entity';
 import { Document } from './entities/document.entity';
 import { UserFile } from './entities/user-file.entity';
 import { KnowledgeItem } from './entities/knowledge-item.entity';
 import { ChatMessage } from './entities/chat-message.entity';
+import { Project } from './entities/project.entity';
 
 @Module({
   imports: [
@@ -29,7 +31,7 @@ import { ChatMessage } from './entities/chat-message.entity';
         username: configService.get('DB_USERNAME') || 'postgres',
         password: configService.get('DB_PASSWORD') || 'password',
         database: configService.get('DB_NAME') || 'editron',
-        entities: [User, Document, UserFile, KnowledgeItem, ChatMessage],
+        entities: [User, Document, UserFile, KnowledgeItem, ChatMessage, Project],
         synchronize: process.env.NODE_ENV !== 'production',
         logging: process.env.NODE_ENV === 'development',
       }),
@@ -43,6 +45,7 @@ import { ChatMessage } from './entities/chat-message.entity';
     ChatModule,
     ChatHistoryModule,
     RedisModule,
+    ProjectModule,
   ],
   controllers: [],
   providers: [],

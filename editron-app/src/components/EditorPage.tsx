@@ -17,7 +17,7 @@ interface Document {
 }
 
 const EditorPage = () => {
-  const { uuid } = useParams<{ uuid: string }>();
+  const { uuid, projectUuid } = useParams<{ uuid: string; projectUuid?: string }>();
   const navigate = useNavigate();
   const [document, setDocument] = useState<Document | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +41,7 @@ const EditorPage = () => {
 
   const fetchDocument = async () => {
     try {
-      const doc = await apiClient.getDocument(uuid!) as Document;
+      const doc = await apiClient.getDocument(uuid!, projectUuid) as Document;
       setDocument(doc);
       setError(null);
     } catch (error) {
@@ -66,7 +66,7 @@ const EditorPage = () => {
     setIsSaving(true);
     
     try {
-      await apiClient.updateDocument(document.uuid, { content });
+      await apiClient.updateDocument(document.uuid, { content }, projectUuid);
       setLastSaved(new Date());
     } catch (error) {
       console.error('Error saving document:', error);
@@ -101,7 +101,7 @@ const EditorPage = () => {
     setAgentDiffHtml(null);
     
     try {
-      const response = await apiClient.agentEdit(document.uuid, promptText) as any;
+      const response = await apiClient.agentEdit(document.uuid, promptText, projectUuid) as any;
       setAgentDiffHtml(response.diffHtml);
     } catch (error) {
       console.error('Agent edit failed:', error);
@@ -162,7 +162,7 @@ const EditorPage = () => {
           <p className="text-muted-foreground">
             The document you're looking for doesn't exist or has been moved.
           </p>
-          <Button onClick={() => navigate('/dashboard')} className="gap-2">
+          <Button onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')} className="gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </Button>
@@ -185,7 +185,7 @@ const EditorPage = () => {
             <Button onClick={fetchDocument} variant="outline">
               Check Status
             </Button>
-            <Button onClick={() => navigate('/dashboard')} variant="ghost">
+            <Button onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')} variant="ghost">
               Back to Dashboard
             </Button>
           </div>
@@ -203,7 +203,7 @@ const EditorPage = () => {
           <p className="text-muted-foreground max-w-md">
             There was an error processing your document. Please try uploading it again.
           </p>
-          <Button onClick={() => navigate('/dashboard')} className="gap-2">
+          <Button onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')} className="gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </Button>
@@ -219,7 +219,7 @@ const EditorPage = () => {
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <div className="flex items-center gap-4">
             <Button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')}
               variant="ghost"
               size="sm"
               className="gap-2"
@@ -266,6 +266,7 @@ const EditorPage = () => {
       {/* Chat Sidebar */}
       <ChatSidebar 
         documentUuid={document.uuid} 
+        projectUuid={projectUuid}
         onAgentRequest={handleAgentRequest} 
         onHistoryRefresh={(refreshFn) => { refreshChatHistoryRef.current = refreshFn; }}
       />

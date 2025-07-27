@@ -23,29 +23,31 @@ import { DocumentService } from './document.service';
 import { AgentRequestDto } from './dto/agent-request.dto';
 
 @UseGuards(AuthGuard('jwt'))
-@Controller('documents')
+@Controller('projects/:projectUuid/documents')
 export class DocumentController {
   private readonly logger = new Logger(DocumentController.name);
 
   constructor(private readonly documentService: DocumentService) {}
 
   @Get()
-  async listDocuments(@AuthUser() userInfo: UserInfo) {
-    return this.documentService.findAllForUser(userInfo.user.id);
+  async listDocuments(@AuthUser() userInfo: UserInfo, @Param('projectUuid') projectUuid: string) {
+    return this.documentService.findAllForProject(projectUuid, userInfo.user.id);
   }
 
   @Get(':uuid')
   async getDocument(
     @AuthUser() userInfo: UserInfo,
+    @Param('projectUuid') projectUuid: string,
     @Param('uuid') uuid: string,
   ) {
-    return this.documentService.findOneByUser(uuid, userInfo.user.id);
+    return this.documentService.findOneByProject(uuid, projectUuid, userInfo.user.id);
   }
 
   @Post('upload-and-preview')
   @UseInterceptors(FileInterceptor('file'))
   async uploadAndPreview(
     @AuthUser() userInfo: UserInfo,
+    @Param('projectUuid') projectUuid: string,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -57,9 +59,10 @@ export class DocumentController {
       }),
     ) file: Express.Multer.File,
   ) {
-    this.logger.log(`Received DOCX upload "${file.originalname}" from user ${userInfo.user.id}`);
+    this.logger.log(`Received DOCX upload "${file.originalname}" from user ${userInfo.user.id} for project ${projectUuid}`);
     return this.documentService.createFromUpload(
       userInfo.user,
+      projectUuid,
       file.buffer,
       file.originalname
     );
@@ -68,20 +71,23 @@ export class DocumentController {
   @Patch(':uuid')
   async updateDocument(
     @AuthUser() userInfo: UserInfo,
+    @Param('projectUuid') projectUuid: string,
     @Param('uuid') uuid: string,
     @Body() updateData: { content?: string; title?: string },
   ) {
-    return this.documentService.updateDocument(uuid, userInfo.user.id, updateData);
+    return this.documentService.updateDocument(uuid, projectUuid, userInfo.user.id, updateData);
   }
 
   @Post('agent-edit')
   @HttpCode(HttpStatus.OK)
   async agentEdit(
     @AuthUser() userInfo: UserInfo,
+    @Param('projectUuid') projectUuid: string,
     @Body() agentRequestDto: AgentRequestDto,
   ) {
     return this.documentService.generateAgentSuggestion(
       userInfo.userLocalId,
+      projectUuid,
       agentRequestDto.documentUuid,
       agentRequestDto.promptText,
     );

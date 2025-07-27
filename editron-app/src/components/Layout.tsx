@@ -1,9 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { LogOut, FileText } from 'lucide-react';
+import { LogOut, FolderPlus, Folder } from 'lucide-react';
+import { apiClient } from '../utils/api';
+import { CreateProjectModal } from './CreateProjectModal';
 
 interface UserProfile {
   id: number;
@@ -11,6 +13,15 @@ interface UserProfile {
   name: string;
   profilePicture?: string;
   authProvider: string;
+}
+
+interface Project {
+  uuid: string;
+  name: string;
+  description?: string;
+  customInstructions?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface LayoutProps {
@@ -22,6 +33,9 @@ interface LayoutProps {
 const Layout = ({ profile, children, onLogout }: LayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -30,6 +44,32 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
     } catch (error) {
       console.error("Logout failed:", error);
     }
+  };
+
+  const fetchProjects = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedProjects = await apiClient.getProjects() as Project[];
+      setProjects(fetchedProjects);
+      
+      // Set first project as active if none is set
+      if (!activeProjectId && fetchedProjects.length > 0) {
+        setActiveProjectId(fetchedProjects[0].uuid);
+      }
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const handleProjectClick = (projectUuid: string) => {
+    setActiveProjectId(projectUuid);
+    navigate(`/project/${projectUuid}`);
   };
 
   const isActive = (path: string) => {
@@ -62,17 +102,57 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
         </div>
         
         <nav className="flex-1 py-4 overflow-y-auto">
-          <button 
-            className={`flex items-center w-full px-6 py-3 text-sm font-medium transition-colors ${
-              isActive('/dashboard') 
-                ? 'bg-primary text-primary-foreground border-r-3 border-primary/80' 
-                : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100'
-            }`}
-            onClick={() => navigate('/dashboard')}
-          >
-            <FileText className="w-5 h-5 mr-2" />
-            <span>Dashboard</span>
-          </button>
+          {/* Projects Section */}
+          <div className="px-6">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Projects
+              </h4>
+              <CreateProjectModal
+                onProjectCreated={(newProject) => {
+                  setProjects(prev => [newProject, ...prev]);
+                  setActiveProjectId(newProject.uuid);
+                  navigate(`/project/${newProject.uuid}`);
+                }}
+                trigger={
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 text-gray-400 hover:text-gray-100 hover:bg-gray-700"
+                  >
+                    <FolderPlus className="w-4 h-4" />
+                  </Button>
+                }
+              />
+            </div>
+            
+            {isLoading ? (
+              <div className="text-sm text-gray-400 px-3 py-2">
+                Loading projects...
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="text-sm text-gray-400 px-3 py-2">
+                No projects yet. Create your first project!
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {projects.map((project) => (
+                  <button
+                    key={project.uuid}
+                    className={`flex items-center w-full px-3 py-2 text-sm font-medium transition-colors rounded-md ${
+                      activeProjectId === project.uuid
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100'
+                    }`}
+                    onClick={() => handleProjectClick(project.uuid)}
+                  >
+                    <Folder className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">{project.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
         
         <div className="p-6 border-t border-gray-700 flex-shrink-0">

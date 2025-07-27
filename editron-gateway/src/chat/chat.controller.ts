@@ -22,7 +22,7 @@ export class ChatController {
     @AuthUser() userInfo: UserInfo,
     @Body() chatQueryDto: ChatQueryDto,
   ): Promise<Observable<MessageEvent>> {
-    const { promptText, documentUuid, mode } = chatQueryDto;
+    const { promptText, documentUuid, projectUuid, mode } = chatQueryDto;
     
     await this.chatHistoryService.addMessage(userInfo.userLocalId, ChatMessageRole.USER, promptText);
 
@@ -32,6 +32,7 @@ export class ChatController {
       userInfo,
       promptText,
       documentUuid,
+      projectUuid,
       mode,
     );
 

@@ -14,6 +14,7 @@ import { chunkTextWithLangchain } from '../common/utils/text-chunker';
 
 interface DocumentProcessingJobData {
   documentId: number;
+  projectId: number;
   userId: number;
   fileBuffer: number[];
   originalName: string;
@@ -40,7 +41,7 @@ export class DocumentIndexingProcessor extends WorkerHost {
   }
 
   async process(job: Job<DocumentProcessingJobData>): Promise<void> {
-    const { documentId, userId, fileBuffer, originalName } = job.data;
+    const { documentId, projectId, userId, fileBuffer, originalName } = job.data;
     
     // Only process indexing jobs, skip other job types
     if (job.name !== 'process-document-indexing') {
@@ -89,6 +90,7 @@ export class DocumentIndexingProcessor extends WorkerHost {
       const knowledgeItems: KnowledgeItem[] = chunks.map((chunk, index) => {
         const item = new KnowledgeItem();
         item.user = { id: userId } as any;
+        item.project = { id: projectId } as any;
         item.document = { id: documentId } as any;
         item.chunkIndex = index;
         item.content = chunk;
