@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut, FolderPlus, Folder } from 'lucide-react';
 import { apiClient } from '../utils/api';
 import { CreateProjectModal } from './CreateProjectModal';
+import { Toaster } from '@/components/ui/toaster';
 
 interface UserProfile {
   id: number;
@@ -170,6 +171,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
       <main className="flex-1 flex flex-col min-h-screen ml-80 bg-background">
         {children}
       </main>
+      <Toaster />
     </div>
   );
 };

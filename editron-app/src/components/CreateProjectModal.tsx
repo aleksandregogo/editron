@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FolderPlus } from 'lucide-react';
 import { apiClient } from '../utils/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface CreateProjectModalProps {
   isOpen?: boolean;
@@ -20,6 +21,8 @@ export const CreateProjectModal = ({
   onProjectCreated,
   trigger 
 }: CreateProjectModalProps) => {
+  const { toast } = useToast();
+  const [internalOpen, setInternalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -27,6 +30,23 @@ export const CreateProjectModal = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use controlled or uncontrolled state
+  const isControlled = isOpen !== undefined;
+  const dialogOpen = isControlled ? isOpen : internalOpen;
+  const handleOpenChange = (open: boolean) => {
+    if (isControlled) {
+      onOpenChange?.(open);
+    } else {
+      setInternalOpen(open);
+    }
+    
+    if (!open) {
+      // Reset form when modal closes
+      setFormData({ name: '', description: '', customInstructions: '' });
+      setError(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,11 +65,16 @@ export const CreateProjectModal = ({
         customInstructions: formData.customInstructions.trim() || undefined,
       });
 
-      // Reset form
-      setFormData({ name: '', description: '', customInstructions: '' });
+      // Show success toast
+      toast({
+        title: "Project created successfully!",
+        description: `"${formData.name.trim()}" has been created.`,
+      });
       
-      // Close modal
-      onOpenChange?.(false);
+      // Reset form and close modal immediately
+      setFormData({ name: '', description: '', customInstructions: '' });
+      setError(null);
+      handleOpenChange(false);
       
       // Notify parent component
       onProjectCreated?.(newProject);
@@ -76,7 +101,10 @@ export const CreateProjectModal = ({
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog 
+      open={dialogOpen} 
+      onOpenChange={handleOpenChange}
+    >
       <DialogTrigger asChild>
         {trigger || defaultTrigger}
       </DialogTrigger>
@@ -136,7 +164,7 @@ export const CreateProjectModal = ({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange?.(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isSubmitting}
               className="flex-1"
             >
