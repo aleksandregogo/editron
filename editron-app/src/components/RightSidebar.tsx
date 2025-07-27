@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Send, Bot, User, ChevronLeft, ChevronDown } from 'lucide-react';
+import { MessageSquare, Send, ChevronLeft, ChevronDown } from 'lucide-react';
 import { apiClient } from '../utils/api';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { setGlobalAddMessage } from './EditorPage';
+import { setGlobalAddMessage, getGlobalAgentRequest } from './EditorPage';
 
 interface RightSidebarProps {
   isCollapsed: boolean;
@@ -24,21 +24,17 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
   const [isLoading, setIsLoading] = useState(false);
   const [isAgentMode, setIsAgentMode] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const hasInitialized = useRef(false);
 
   // Check if we're on an editor page
   const isEditorPage = !!documentUuid;
 
 
-  // Set default mode based on page type only on initial load
+  // Set default mode based on page type - automatically switch on navigation
   useEffect(() => {
-    if (!hasInitialized.current) {
-      if (isEditorPage) {
-        setIsAgentMode(true); // Default to Agent mode on editor pages
-      } else {
-        setIsAgentMode(false); // Default to Ask mode on dashboard pages
-      }
-      hasInitialized.current = true;
+    if (isEditorPage) {
+      setIsAgentMode(true); // Default to Agent mode on editor pages
+    } else {
+      setIsAgentMode(false); // Default to Ask mode on dashboard pages
     }
   }, [isEditorPage]);
 
@@ -89,19 +85,38 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
     setMessages(prev => [...prev, userMessage]);
     
     // Handle Agent Mode differently
-    if (isAgentMode && isEditorPage && onAgentRequest) {
-      onAgentRequest(promptText);
-      return;
+    if (isAgentMode && isEditorPage) {
+      if (onAgentRequest) {
+        console.log('Agent mode: calling onAgentRequest with:', promptText);
+        onAgentRequest(promptText);
+        return;
+      } else {
+        console.error('Agent mode requested but onAgentRequest function not available');
+        // Try to get the function from global state as fallback
+        const globalAgentRequest = getGlobalAgentRequest();
+        if (globalAgentRequest) {
+          console.log('Using global agent request function as fallback');
+          globalAgentRequest(promptText);
+          return;
+        }
+        
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: 'Sorry, agent mode is not available for this document. Please try again later.' 
+        }]);
+        return;
+      }
     }
 
     // Regular chat mode
+    console.log('Chat mode: processing chat query');
     setIsLoading(true);
 
     const assistantMessage: ChatMessage = { role: 'assistant', content: '' };
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      const reader = await apiClient.chatQuery(promptText, documentUuid, projectUuid);
+      const reader = await apiClient.chatQuery(promptText, documentUuid, projectUuid, 'chat');
       
       const decoder = new TextDecoder();
       let done = false;
@@ -275,6 +290,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
                   <DropdownMenuContent align="start" className="w-24">
                     <DropdownMenuItem
                       onClick={() => {
+                        console.log('Switching to Agent mode');
                         setIsAgentMode(true);
                       }}
                       className={isAgentMode ? "bg-accent" : "" + "cursor-pointer"}
@@ -283,6 +299,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
+                        console.log('Switching to Ask mode');
                         setIsAgentMode(false);
                       }}
                       className={!isAgentMode ? "bg-accent" : "" + "cursor-pointer"}

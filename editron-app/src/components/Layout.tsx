@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Folder, FolderPlus, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,15 +50,64 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
   const onAgentRequest = getGlobalAgentRequest() || undefined;
 
   // Extract document UUID from URL for editor pages
-  const documentUuid = location.pathname.includes('/editor/') ? location.pathname.split('/editor/')[1] : undefined;
-  const projectUuid = location.pathname.includes('/project/') ? location.pathname.split('/project/')[1]?.split('/')[0] : undefined;
+  let documentUuid: string | undefined;
+  let projectUuid: string | undefined;
+  
+  // Handle both editor route patterns: /project/:projectUuid/editor/:uuid and /editor/:uuid
+  if (location.pathname.includes('/project/') && location.pathname.includes('/editor/')) {
+    // Pattern: /project/:projectUuid/editor/:uuid
+    const pathParts = location.pathname.split('/');
+    const projectIndex = pathParts.findIndex(part => part === 'project');
+    const editorIndex = pathParts.findIndex(part => part === 'editor');
+    
+    if (projectIndex !== -1 && editorIndex !== -1 && editorIndex > projectIndex) {
+      projectUuid = pathParts[projectIndex + 1];
+      documentUuid = pathParts[editorIndex + 1];
+    }
+  } else if (location.pathname.includes('/editor/')) {
+    // Pattern: /editor/:uuid
+    documentUuid = location.pathname.split('/editor/')[1];
+  } else if (location.pathname.includes('/project/')) {
+    // Pattern: /project/:projectUuid (dashboard)
+    projectUuid = location.pathname.split('/project/')[1]?.split('/')[0];
+  }
 
-  const shouldShowRightSidebar = location.pathname.includes('/project/') &&
-    (location.pathname.includes('/editor/') || location.pathname.split('/').length === 2);
+  // Debug logging for agent request function
+  useEffect(() => {
+    console.log('Layout: onAgentRequest function:', {
+      hasFunction: !!onAgentRequest,
+      documentUuid,
+      projectUuid,
+      pathname: location.pathname
+    });
+  }, [onAgentRequest, documentUuid, projectUuid, location.pathname]);
+
+  const shouldShowRightSidebar = useMemo(() => {
+    // Show sidebar on project pages (both dashboard and editor)
+    const isProjectPage = location.pathname.includes('/project/');
+    const isEditorPage = location.pathname.includes('/editor/');
+    const isProjectDashboard = location.pathname.includes('/project/') && !location.pathname.includes('/editor/');
+
+    const result = isProjectPage || isEditorPage;
+
+    console.log('Layout: shouldShowRightSidebar calculation:', {
+      pathname: location.pathname,
+      isProjectPage,
+      isEditorPage,
+      isProjectDashboard,
+      shouldShow: result
+    });
+
+    return result;
+  }, [location.pathname]);
 
   useEffect(() => {
     setShowRightSidebar(shouldShowRightSidebar);
   }, [shouldShowRightSidebar]);
+
+  useEffect(() => {
+    console.log('Layout: showRightSidebar state changed:', showRightSidebar);
+  }, [showRightSidebar]);
 
   const handleLogout = async () => {
     try {
@@ -75,7 +124,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
     try {
       const fetchedProjects = await apiClient.getProjects() as Project[];
       setProjects(fetchedProjects);
-      
+
       // Set active project based on URL
       if (projectUuid && fetchedProjects.some(p => p.uuid === projectUuid)) {
         setActiveProjectId(projectUuid);
@@ -102,23 +151,11 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
     navigate(`/project/${projectUuid}`, { replace: true });
   };
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-
-  const layoutContext = {
-    refreshProjects: fetchProjects,
-    projects,
-    activeProjectId,
-    setActiveProjectId
-  };
-
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Left Sidebar */}
-      <div className={`flex flex-col bg-gray-800 text-gray-50 border-r border-gray-700 transition-all duration-300 ${
-        isLeftSidebarCollapsed ? 'w-16' : 'w-64'
-      }`}>
+      <div className={`flex flex-col bg-gray-800 text-gray-50 border-r border-gray-700 transition-all duration-300 ${isLeftSidebarCollapsed ? 'w-16' : 'w-64'
+        }`}>
         {/* User Profile Section */}
         <div className="p-4 border-b border-gray-700 flex-shrink-0">
           {isLeftSidebarCollapsed ? (
@@ -155,7 +192,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
             </div>
           )}
         </div>
-        
+
         {/* Projects Section */}
         <div className="flex-1 py-4 overflow-y-auto">
           <div className="px-4">
@@ -164,28 +201,28 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
                 <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   Projects
                 </h4>
-                                  <CreateProjectModal
-                    onProjectCreated={(newProject) => {
-                      if (newProject && newProject.uuid) {
-                        setProjects(prev => [newProject, ...prev]);
-                        setActiveProjectId(newProject.uuid);
-                        // Navigate immediately to avoid any race conditions
-                        window.location.href = `/project/${newProject.uuid}`;
-                      }
-                    }}
-                    trigger={
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0 text-gray-400 hover:text-gray-100 hover:bg-gray-700 rounded-md"
-                      >
-                        <FolderPlus className="w-4 h-4" />
-                      </Button>
+                <CreateProjectModal
+                  onProjectCreated={(newProject) => {
+                    if (newProject && newProject.uuid) {
+                      setProjects(prev => [newProject, ...prev]);
+                      setActiveProjectId(newProject.uuid);
+                      // Navigate immediately to avoid any race conditions
+                      window.location.href = `/project/${newProject.uuid}`;
                     }
-                  />
+                  }}
+                  trigger={
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 text-gray-400 hover:text-gray-100 hover:bg-gray-700 rounded-md"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                    </Button>
+                  }
+                />
               </div>
             )}
-            
+
             {isLoading ? (
               <div className={`text-sm text-gray-400 ${isLeftSidebarCollapsed ? 'text-center' : 'px-3'} py-2`}>
                 {isLeftSidebarCollapsed ? '...' : 'Loading...'}
@@ -199,11 +236,10 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
                 {projects.map((project) => (
                   <button
                     key={project.uuid}
-                    className={`flex items-center w-full px-3 py-2.5 text-sm font-medium transition-colors rounded-md ${
-                      activeProjectId === project.uuid
+                    className={`flex items-center w-full px-3 py-2.5 text-sm font-medium transition-colors rounded-md ${activeProjectId === project.uuid
                         ? 'bg-primary text-primary-foreground'
                         : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100'
-                    }`}
+                      }`}
                     onClick={() => handleProjectClick(project.uuid)}
                     title={isLeftSidebarCollapsed ? project.name : undefined}
                   >
@@ -217,45 +253,45 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
             )}
           </div>
         </div>
-        
+
         {/* Bottom Actions */}
         <div className="border-t border-gray-700 flex-shrink-0">
           <div className="flex flex-col">
-            <Button 
+            <Button
               onClick={() => setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed)}
-              variant="ghost" 
+              variant="ghost"
               size="sm"
               className="w-full h-12 rounded-none border-0 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
             >
               {isLeftSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+              {!isLeftSidebarCollapsed && <span className="truncate ml-3">Collapse</span>}
             </Button>
-            <Button 
-              onClick={handleLogout} 
-              variant="ghost" 
+            <Button
+              onClick={handleLogout}
+              variant="ghost"
               size="sm"
               className="w-full h-12 rounded-none border-0 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
             >
               <LogOut className="w-5 h-5" />
+              {!isLeftSidebarCollapsed && <span className="truncate ml-3">Logout</span>}
             </Button>
           </div>
         </div>
       </div>
-      
+
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${
-        showRightSidebar ? (isRightSidebarCollapsed ? 'mr-12' : 'mr-96') : ''
-      }`}>
-        {React.cloneElement(children as React.ReactElement, { 
-          refreshProjects: fetchProjects 
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${showRightSidebar ? (isRightSidebarCollapsed ? 'mr-12' : 'mr-96') : ''
+        }`}>
+        {React.cloneElement(children as React.ReactElement, {
+          refreshProjects: fetchProjects
         })}
       </div>
 
       {/* Right Sidebar */}
       {showRightSidebar && (
-        <div className={`fixed top-0 right-0 h-screen bg-card border-l border-border transition-all duration-300 z-30 ${
-          isRightSidebarCollapsed ? 'w-12' : 'w-96'
-        }`}>
-          <RightSidebar 
+        <div className={`fixed top-0 right-0 h-screen bg-card border-l border-border transition-all duration-300 z-30 ${isRightSidebarCollapsed ? 'w-12' : 'w-96'
+          }`}>
+          <RightSidebar
             isCollapsed={isRightSidebarCollapsed}
             onToggleCollapse={() => setIsRightSidebarCollapsed(!isRightSidebarCollapsed)}
             documentUuid={documentUuid}
@@ -264,7 +300,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
           />
         </div>
       )}
-      
+
       <Toaster />
     </div>
   );

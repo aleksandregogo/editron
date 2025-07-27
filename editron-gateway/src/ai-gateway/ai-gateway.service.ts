@@ -81,7 +81,7 @@ export class AiGatewayService {
         const input = {
             messages: messages.map(m => ({ role: m.role, content: m.content })),
             stream: false,
-            max_tokens: 4096,
+            max_tokens: 2048, // Reduced from 4096 to 2048
             temperature: 0.7,
         };
 

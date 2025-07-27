@@ -2,16 +2,19 @@ export const generateRagChatCompletionPrompt = (
   contextChunks: string[],
   chatHistory: { role: string; content: string }[],
   userQuery: string,
-  userContext: string = ''
+  customInstructions?: string,
+  projectInfo?: string,
 ) => {
-  const contextString = contextChunks.length > 0 
-    ? contextChunks.map((c, i) => `[CONTEXT ${i+1}]:\n${c}`).join('\n\n')
+  const contextString = contextChunks.length > 0
+    ? contextChunks.map((c, i) => `[CONTEXT ${i + 1}]:\n${c}`).join('\n\n')
     : 'No relevant context found in your documents.';
 
-  return [
-    {
-      role: 'system',
-      content: `You are a helpful AI assistant with access to the user's document library. Answer questions based on the provided context from their documents.
+  const instructionsContext = customInstructions ? `\n\nPROJECT CUSTOM INSTRUCTIONS:\n---\n${customInstructions}\n---` : '';
+  const projectInfoContext = projectInfo || '';
+
+  const systemContent = `You are a helpful AI assistant with access to the user's document library. Answer questions based on the provided context from their documents.
+
+**CRITICAL: The context below contains actual document content. Use it to answer questions.**
 
 **Instructions:**
 1. Use the provided context chunks to answer the user's question accurately.
@@ -19,16 +22,38 @@ export const generateRagChatCompletionPrompt = (
 3. Provide specific references to the documents when possible (e.g., "According to your document about...").
 4. Be conversational but precise.
 5. If no context is provided, let the user know you don't have access to relevant documents for this query.
+6. For project-wide questions, analyze all available documents to provide comprehensive answers.
+7. When asked about project summaries or overall descriptions, synthesize information from multiple documents.
+8. If custom project instructions are provided, follow them when making suggestions or analysis.
+9. When asked "what is this project about?", use the project information and document context to provide a comprehensive overview.
+10. For project-related questions, always consider the project name, description, and custom instructions when formulating your response.
+11. **IMPORTANT**: The context below contains real document content. Do not say the context is empty.
+12. If the context contains form fields with underscores (like "_________________"), these are placeholders that need to be filled in. The document structure is still valid and meaningful.
+13. **CRITICAL**: When you see "Context from Documents:" below, that means there IS context available. Use it.
+14. **VERY IMPORTANT**: If you see any text after "Context from Documents:", then context IS available. Never say "the context is empty" if you see actual text in the context section.
+15. **PROJECT AWARENESS**: If you see "PROJECT DOCUMENTS:" in the context, this lists all documents in the project. Use this information to understand the project scope.
+16. **FIRST CHUNKS**: If you see "[Document Name - First Section]", these are the opening sections of documents and provide important context about each document's purpose and content.`;
 
-**Context from Documents:**
-${contextString}
+  console.log('generateRagChatCompletionPrompt debug:', {
+    contextChunksLength: contextChunks.length,
+    hasCustomInstructions: !!customInstructions,
+    hasProjectInfo: !!projectInfo,
+    contextStringLength: contextString.length,
+    instructionsContextLength: instructionsContext.length,
+    projectInfoContextLength: projectInfoContext.length,
+    systemContentLength: systemContent.length,
+    systemContentPreview: systemContent.substring(0, 300) + '...'
+  });
 
-${userContext ? `**Additional Context:** ${userContext}` : ''}`
+  return [
+    {
+      role: 'system',
+      content: systemContent
     },
     ...chatHistory.map(msg => ({ role: msg.role, content: msg.content })),
     {
       role: 'user',
-      content: userQuery
+      content: `CONTEXT FROM DOCUMENTS:\n---\n${contextString}\n---${instructionsContext}${projectInfoContext}\n\nUSER QUERY: ${userQuery}`
     }
   ];
 };
@@ -37,8 +62,10 @@ export const generateDocumentChatPrompt = (
   contextChunks: string[],
   chatHistory: { role: string; content: string }[],
   userQuery: string,
+  customInstructions?: string,
 ) => {
-  const contextString = contextChunks.map((c, i) => `[CONTEXT CHUNK ${i+1}]:\n${c}`).join('\n\n');
+  const contextString = contextChunks.map((c, i) => `[CONTEXT CHUNK ${i + 1}]:\n${c}`).join('\n\n');
+  const instructionsContext = customInstructions ? `\n\nPROJECT CUSTOM INSTRUCTIONS:\n---\n${customInstructions}\n---` : '';
 
   return [
     {
@@ -51,6 +78,10 @@ export const generateDocumentChatPrompt = (
 3. **Respond conversationally:** Give natural, helpful responses as if you're a knowledgeable assistant.
 4. **For editing requests:** Clearly explain what changes you'd suggest and why.
 5. **For analysis requests:** Provide thoughtful insights about the document content.
+6. **For document questions:** Answer questions about what the document contains, its structure, or purpose.
+7. **Project Instructions:** If custom project instructions are provided, follow them when making suggestions or analysis.
+8. **Document Focus:** Keep your responses focused on the specific document being discussed.
+9. **Context Awareness:** Use the provided document chunks to provide accurate, contextual responses.
 
 **Response Guidelines:**
 - Be specific and reference the document content when relevant
@@ -58,6 +89,7 @@ export const generateDocumentChatPrompt = (
 - If analyzing content, highlight key points and insights
 - Keep responses helpful and actionable
 - Be conversational but professional
+- Always consider custom project instructions when provided
 
 **Examples:**
 - Analysis: "This section focuses on quarterly revenue growth, showing a 15% increase primarily driven by the new product line..."
@@ -67,7 +99,7 @@ export const generateDocumentChatPrompt = (
     ...chatHistory.map(msg => ({ role: msg.role, content: msg.content })),
     {
       role: 'user',
-      content: `CONTEXT FROM DOCUMENT:\n---\n${contextString}\n---\n\nUSER QUERY: ${userQuery}`
+      content: `CONTEXT FROM DOCUMENT:\n---\n${contextString}\n---${instructionsContext}\n\nUSER QUERY: ${userQuery}`
     }
   ];
 };
@@ -76,8 +108,12 @@ export const generateDocumentAgentPrompt = (
   contextChunks: string[],
   chatHistory: { role: string; content: string }[],
   userQuery: string,
+  documentContent?: string,
+  customInstructions?: string,
 ) => {
-  const contextString = contextChunks.map((c, i) => `[CONTEXT CHUNK ${i+1}]:\n${c}`).join('\n\n');
+  const contextString = contextChunks.map((c, i) => `[CONTEXT CHUNK ${i + 1}]:\n${c}`).join('\n\n');
+  const fullDocumentContext = documentContent ? `\n\nFULL DOCUMENT CONTENT:\n---\n${documentContent}\n---` : '';
+  const instructionsContext = customInstructions ? `\n\nPROJECT CUSTOM INSTRUCTIONS:\n---\n${customInstructions}\n---` : '';
 
   return [
     {
@@ -87,13 +123,17 @@ export const generateDocumentAgentPrompt = (
 **CRITICAL INSTRUCTIONS:**
 1. **Analyze the User's Query:** Understand if they want to add, remove, rephrase, or analyze text.
 2. **Use the Context:** The provided context chunks are snippets from the document relevant to the user's query. Base your answer ONLY on these chunks.
-3. **Respond in JSON format ONLY.** Your entire output must be a single, valid JSON object.
-4. **JSON Structure:** The JSON object must have one of two main keys: "analysis" or "suggestion".
+3. **Full Document Access:** If full document content is provided, you have access to the complete document for comprehensive analysis.
+4. **Project Instructions:** If custom project instructions are provided, follow them when making suggestions or analysis.
+5. **Respond in JSON format ONLY.** Your entire output must be a single, valid JSON object.
+6. **JSON Structure:** The JSON object must have one of two main keys: "analysis" or "suggestion".
     * Use **"analysis"** if the user asks a question about the text (e.g., "summarize this", "what are the key points?"). The value should be a string containing your answer.
     * Use **"suggestion"** if the user requests a change to the text. The value must be an object with three keys:
         * **"change_reason"**: (string) A brief explanation of why you are making the change.
         * **"original_text"**: (string) The EXACT, original text snippet from the context that needs to be changed.
         * **"suggested_text"**: (string) The new text that should replace the original.
+7. **Custom Instructions:** Always consider any provided custom project instructions when making suggestions or analysis.
+8. **Document Focus:** Keep all responses focused on the specific document being edited.
 
 **Example 1 (Change Request):**
 User Query: "Make the first sentence more professional."
@@ -116,7 +156,7 @@ Your JSON Response:
     ...chatHistory.map(msg => ({ role: msg.role, content: msg.content })),
     {
       role: 'user',
-      content: `CONTEXT FROM DOCUMENT:\n---\n${contextString}\n---\n\nUSER QUERY: ${userQuery}`
+      content: `CONTEXT FROM DOCUMENT:\n---\n${contextString}\n---${fullDocumentContext}${instructionsContext}\n\nUSER QUERY: ${userQuery}`
     }
   ];
 };
@@ -135,7 +175,20 @@ export const generateFullDocumentAgentPrompt = (
       2.  **EXECUTE INSTRUCTIONS COMPREHENSIVELY:** Apply the user's request across the entire document. If they ask to fill a form with placeholders like 'Name: __________', you MUST find and replace EVERY SINGLE placeholder with the correct information. If they ask to change the tone, you MUST apply it consistently throughout the document.
       3.  **MAINTAIN HTML INTEGRITY:** Preserve the original HTML tag structure (e.g., <p>, <h1>, <ul>) meticulously. Only add or modify tags if essential to the request (e.g., adding a <strong> tag).
       4.  **RETURN ONLY HTML:** Your entire output MUST be the complete, modified HTML document. Do NOT include any explanations, markdown formatting like \`\`\`html, apologies, or conversational text. Your response must start with the first HTML tag (e.g., "<h1>") and end with the final closing tag.
-      5.  **DO NOT OMIT CONTENT:** Ensure your output contains all the original content that was not meant to be changed. Do not summarize or shorten the document unless explicitly asked.`
+      5.  **DO NOT OMIT CONTENT:** Ensure your output contains all the original content that was not meant to be changed. Do not summarize or shorten the document unless explicitly asked.
+      6. **Analyze the User's Query:** Understand if they want to add, remove, rephrase, or analyze text.
+      7. **Use the Context:** The provided context chunks are snippets from the document relevant to the user's query. Base your answer ONLY on these chunks.
+      8. **Full Document Access:** If full document content is provided, you have access to the complete document for comprehensive analysis.
+      9. **Project Instructions:** If custom project instructions are provided, follow them when making suggestions or analysis.
+      10. **Respond in JSON format ONLY.** Your entire output must be a single, valid JSON object.
+      11. **JSON Structure:** The JSON object must have one of two main keys: "analysis" or "suggestion".
+          * Use **"analysis"** if the user asks a question about the text (e.g., "summarize this", "what are the key points?"). The value should be a string containing your answer.
+          * Use **"suggestion"** if the user requests a change to the text. The value must be an object with three keys:
+              * **"change_reason"**: (string) A brief explanation of why you are making the change.
+              * **"original_text"**: (string) The EXACT, original text snippet from the context that needs to be changed.
+              * **"suggested_text"**: (string) The new text that should replace the original.
+      7. **Custom Instructions:** Always consider any provided custom project instructions when making suggestions or analysis.
+      8. **Document Focus:** Keep all responses focused on the specific document being edited.`
     },
     {
       role: 'user',

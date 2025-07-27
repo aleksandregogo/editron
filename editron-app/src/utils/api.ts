@@ -211,8 +211,17 @@ class ApiClient {
 
   async chatQuery(promptText: string, documentUuid?: string, projectUuid?: string, mode: 'chat' | 'agent' = 'chat'): Promise<ReadableStreamDefaultReader<Uint8Array>> {
     try {
-      console.log(`[API] Starting chat query with documentUuid: ${documentUuid || 'none'}, mode: ${mode}`);
+      console.log(`[API] Starting chat query with documentUuid: ${documentUuid || 'none'}, projectUuid: ${projectUuid || 'none'}, mode: ${mode}`);
       const headers = await this.getAuthHeaders();
+      
+      const requestBody = { 
+        promptText, 
+        mode,
+        ...(documentUuid && { documentUuid }),
+        ...(projectUuid && { projectUuid })
+      };
+      
+      console.log('[API] Chat request body:', requestBody);
       
       const response = await fetch(`${this.baseUrl}/api/v1/chat/query`, {
         method: 'POST',
@@ -220,12 +229,7 @@ class ApiClient {
           ...headers,
           'Accept': 'text/event-stream',
         },
-        body: JSON.stringify({ 
-          promptText, 
-          mode,
-          ...(documentUuid && { documentUuid }),
-          ...(projectUuid && { projectUuid })
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       console.log(`[API] Chat response status: ${response.status}`);

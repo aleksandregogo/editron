@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import Layout from "./components/Layout";
@@ -192,11 +192,6 @@ function App() {
     } catch (error) {
       console.error("Login failed:", error);
     }
-  };
-
-  const handleLogout = () => {
-    setLoggedIn(false);
-    setProfile(null);
   };
 
   if (loading) {

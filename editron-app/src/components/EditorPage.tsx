@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -111,7 +111,7 @@ const EditorPage = () => {
     }
   };
 
-  const handleAgentRequest = async (promptText: string) => {
+  const handleAgentRequest = useCallback(async (promptText: string) => {
     if (!document) return;
     
     setIsAgentModalOpen(true);
@@ -139,13 +139,18 @@ const EditorPage = () => {
     } finally {
       setIsAgentLoading(false);
     }
-  };
+  }, [document?.uuid, projectUuid]);
 
-  // Set global agent request function when component mounts
+  // Set global agent request function immediately when component mounts
   useEffect(() => {
     setGlobalAgentRequest(handleAgentRequest);
     return () => setGlobalAgentRequest(null);
-  }, [document?.uuid, projectUuid]);
+  }, [handleAgentRequest]);
+
+  // Set it immediately on mount
+  useEffect(() => {
+    setGlobalAgentRequest(handleAgentRequest);
+  }, []);
 
   const handleAgentConfirm = async (finalContent: string) => {
     if (!document) return;
