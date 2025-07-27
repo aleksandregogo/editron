@@ -278,7 +278,7 @@ const EditorPage = () => {
       </header>
 
       {/* Editor Content */}
-      <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
         <TiptapEditor
           initialContent={document.content}
           onContentChange={handleContentChange}

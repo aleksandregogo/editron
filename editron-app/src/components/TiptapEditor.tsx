@@ -87,9 +87,9 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-border rounded-lg shadow-sm overflow-hidden flex flex-col min-h-[600px]">
+    <div className="bg-white dark:bg-gray-900 border border-border rounded-lg shadow-sm overflow-hidden flex flex-col h-full">
       {editable && (
-        <div className="bg-muted/50 border-b border-border p-3">
+        <div className="bg-muted/50 border-b border-border p-3 flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-1 flex-wrap">
             <div className="flex items-center gap-1">
               <ToolbarButton
@@ -199,7 +199,7 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
         </div>
       )}
       
-      <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-auto">
+      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
         <div className="max-w-4xl mx-auto mt-8 mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
           <EditorContent 
             editor={editor} 

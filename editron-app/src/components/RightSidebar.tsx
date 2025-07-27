@@ -181,7 +181,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
       {/* Messages Area */}
       <div 
         ref={scrollAreaRef}
-        className="flex-1 overflow-y-auto p-4 bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-muted"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-muted"
       >
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -200,28 +200,28 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
           </div>
         )}
         
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 min-w-0">
           {messages.map((msg, i) => (
             <div 
               key={i} 
-              className={`flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+              className={`flex items-start gap-3 min-w-0 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
               {/* Avatar */}
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+              {/* <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                 msg.role === 'user' 
                   ? 'bg-primary text-primary-foreground' 
                   : 'bg-muted text-primary'
               }`}>
                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-              </div>
+              </div> */}
               
               {/* Message Bubble */}
-              <div className={`max-w-[85%] p-3 rounded-lg ${
+              <div className={`max-w-[85%] min-w-0 p-3 rounded-lg ${
                 msg.role === 'user' 
                   ? 'bg-primary text-primary-foreground' 
-                  : 'bg-card text-foreground border border-border'
+                  : 'bg-card text-foreground'
               }`}>
-                <p className="text-sm leading-relaxed m-0 whitespace-pre-wrap">
+                <p className="text-sm leading-relaxed m-0 whitespace-pre-wrap break-words">
                   {msg.content || (msg.role === 'assistant' && isLoading ? (
                     <span className="opacity-70">
                       <span className="animate-pulse">Thinking</span>
