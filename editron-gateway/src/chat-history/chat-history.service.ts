@@ -2,7 +2,7 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Redis } from 'ioredis';
-import { ChatMessage, ChatMessageRole } from '../entities/chat-message.entity';
+import { ChatMessage, ChatMessageRole, ChatMessageMode } from '../entities/chat-message.entity';
 import { User } from '../entities/user.entity';
 import { RedisMessageData } from './types/redis-message-data';
 
@@ -37,6 +37,7 @@ export class ChatHistoryService {
     role: ChatMessageRole,
     content: string,
     tokens?: number,
+    mode?: ChatMessageMode,
   ): Promise<ChatMessage> {
     const messageTokens = tokens ?? this.countTokens(content);
     
@@ -45,6 +46,7 @@ export class ChatHistoryService {
       role,
       content,
       tokens: messageTokens,
+      mode: mode || ChatMessageMode.CHAT,
     });
     const savedMessage = await this.chatMessageRepository.save(messageEntity);
 
@@ -54,6 +56,7 @@ export class ChatHistoryService {
       role: savedMessage.role,
       content: savedMessage.content,
       tokens: savedMessage.tokens,
+      mode: savedMessage.mode,
       createdAt: savedMessage.createdAt.toISOString(),
     };
 
@@ -61,7 +64,7 @@ export class ChatHistoryService {
     await this.redisClient.ltrim(cacheKey, 0, this.CACHE_MAX_LENGTH - 1);
     await this.redisClient.expire(cacheKey, this.CACHE_TTL_SECONDS);
 
-    this.logger.debug(`Added message for user ${userId}. Role: ${role}, Tokens: ${messageTokens}`);
+    this.logger.debug(`Added message for user ${userId}. Role: ${role}, Mode: ${mode || 'chat'}, Tokens: ${messageTokens}`);
     return savedMessage;
   }
 
@@ -106,6 +109,7 @@ export class ChatHistoryService {
           role: msg.role, 
           content: msg.content, 
           tokens: messageTokens, 
+          mode: msg.mode,
           createdAt: msg.createdAt.toISOString() 
         };
         history.unshift(redisMsg);

@@ -13,7 +13,7 @@ import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
 import { generateFullDocumentAgentPrompt } from '../common/prompts/custom-prompts';
 import { diffWords } from 'diff';
 import { ChatHistoryService } from '../chat-history/chat-history.service';
-import { ChatMessageRole } from '../entities/chat-message.entity';
+import { ChatMessageRole, ChatMessageMode } from '../entities/chat-message.entity';
 import { StorageService } from '../storage/storage.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -304,7 +304,7 @@ export class ProjectService {
     promptText: string,
   ): Promise<{ originalContent: string; suggestedContent: string; diffHtml: string; }> {
     // Save user message to chat history
-    await this.chatHistoryService.addMessage(userId, ChatMessageRole.USER, promptText);
+    await this.chatHistoryService.addMessage(userId, ChatMessageRole.USER, promptText, undefined, ChatMessageMode.AGENT);
 
     // 1. Fetch the document and apply guardrails
     const document = await this.findDocumentByProject(documentUuid, projectUuid, userId);
@@ -322,28 +322,42 @@ export class ProjectService {
     const aiMessages = messages.map(m => ({ role: m.role as any, content: m.content }));
 
     this.logger.log(`Calling Full Document Agent for doc ${documentUuid}...`);
-    const suggestedContent = await this.aiGatewayService.callChatCompletions(aiMessages);
-
-    if (!suggestedContent || !suggestedContent.trim().startsWith('<')) {
-      this.logger.error(`Agent returned an invalid or empty response for doc ${documentUuid}.`);
-      throw new InternalServerErrorException('AI agent failed to generate a valid document edit.');
-    }
     
-    this.logger.log(`Agent returned a valid suggestion for doc ${documentUuid}.`);
+    try {
+      const suggestedContent = await this.aiGatewayService.callChatCompletions(aiMessages);
 
-    // 3. Backend is the Diff Authority: Calculate the diff here
-    const diffHtml = this.generateDiffHtml(originalContent, suggestedContent);
+      if (!suggestedContent || !suggestedContent.trim().startsWith('<')) {
+        this.logger.error(`Agent returned an invalid or empty response for doc ${documentUuid}.`);
+        throw new InternalServerErrorException('AI agent failed to generate a valid document edit.');
+      }
+      
+      this.logger.log(`Agent returned a valid suggestion for doc ${documentUuid}.`);
 
-    // Save assistant response to chat history
-    const assistantMessage = `I've analyzed your request "${promptText}" and generated suggested edits for the document. The changes include modifications to improve the content based on your request.`;
-    await this.chatHistoryService.addMessage(userId, ChatMessageRole.ASSISTANT, assistantMessage);
+      // 3. Backend is the Diff Authority: Calculate the diff here
+      const diffHtml = this.generateDiffHtml(originalContent, suggestedContent);
 
-    // 4. Return all three pieces of data to the frontend
-    return {
-      originalContent,
-      suggestedContent,
-      diffHtml, // The raw HTML with <ins> and <del> tags
-    };
+      // Save assistant response to chat history
+      const assistantMessage = `I've analyzed your request "${promptText}" and generated suggested edits for the document. The changes include modifications to improve the content based on your request.`;
+      await this.chatHistoryService.addMessage(userId, ChatMessageRole.ASSISTANT, assistantMessage, undefined, ChatMessageMode.AGENT);
+
+      // 4. Return all three pieces of data to the frontend
+      return {
+        originalContent,
+        suggestedContent,
+        diffHtml, // The raw HTML with <ins> and <del> tags
+      };
+    } catch (error) {
+      this.logger.error(`AI Gateway error for doc ${documentUuid}: ${error.message}`);
+      
+      // Provide user-friendly error message
+      if (error.message.includes('AI service unavailable')) {
+        throw new InternalServerErrorException('AI service is temporarily unavailable. Please try again in a few moments.');
+      } else if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+        throw new InternalServerErrorException('Request timed out. Please try again.');
+      } else {
+        throw new InternalServerErrorException('Failed to process your request. Please try again.');
+      }
+    }
   }
 
   private generateDiffHtml(originalContent: string, suggestedContent: string): string {

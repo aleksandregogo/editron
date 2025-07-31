@@ -11,7 +11,7 @@ import { apiClient } from '../utils/api';
 let globalAgentRequestFunction: ((promptText: string) => void) | null = null;
 
 // Global state for adding messages to chat history
-let globalAddMessageFunction: ((message: { role: 'user' | 'assistant'; content: string }) => void) | null = null;
+let globalAddMessageFunction: ((message: { role: 'user' | 'assistant'; content: string; mode?: 'chat' | 'agent' }) => void) | null = null;
 
 export const setGlobalAgentRequest = (fn: ((promptText: string) => void) | null) => {
   globalAgentRequestFunction = fn;
@@ -19,11 +19,11 @@ export const setGlobalAgentRequest = (fn: ((promptText: string) => void) | null)
 
 export const getGlobalAgentRequest = () => globalAgentRequestFunction;
 
-export const setGlobalAddMessage = (fn: ((message: { role: 'user' | 'assistant'; content: string }) => void) | null) => {
+export const setGlobalAddMessage = (fn: ((message: { role: 'user' | 'assistant'; content: string; mode?: 'chat' | 'agent' }) => void) | null) => {
   globalAddMessageFunction = fn;
 };
 
-export const addMessageToChat = (message: { role: 'user' | 'assistant'; content: string }) => {
+export const addMessageToChat = (message: { role: 'user' | 'assistant'; content: string; mode?: 'chat' | 'agent' }) => {
   if (globalAddMessageFunction) {
     globalAddMessageFunction(message);
   }
@@ -150,7 +150,8 @@ const EditorPage = () => {
       // Add agent response to chat history
       addMessageToChat({
         role: 'assistant',
-        content: `I've analyzed your request and prepared the changes. Please review the proposed modifications below.`
+        content: `I've analyzed your request and prepared the changes. Please review the proposed modifications below.`,
+        mode: 'agent'
       });
     } catch (error) {
       console.error('Agent edit failed:', error);
@@ -159,7 +160,8 @@ const EditorPage = () => {
       // Add error response to chat history
       addMessageToChat({
         role: 'assistant',
-        content: 'Sorry, I encountered an error while processing your request. Please try again.'
+        content: 'Sorry, I encountered an error while processing your request. Please try again.',
+        mode: 'agent'
       });
     } finally {
       setIsAgentLoading(false);

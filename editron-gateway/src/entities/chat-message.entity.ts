@@ -8,6 +8,11 @@ export enum ChatMessageRole {
   SYSTEM = 'system',
 }
 
+export enum ChatMessageMode {
+  CHAT = 'chat',
+  AGENT = 'agent',
+}
+
 @Entity('chat_messages')
 export class ChatMessage extends Defentity {
   @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: false })
@@ -27,4 +32,12 @@ export class ChatMessage extends Defentity {
 
   @Column({ type: 'int', default: 0 })
   tokens: number;
+
+  @Column({
+    type: 'enum',
+    enum: ChatMessageMode,
+    nullable: true,
+    default: ChatMessageMode.CHAT,
+  })
+  mode: ChatMessageMode;
 } 

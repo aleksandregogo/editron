@@ -309,6 +309,23 @@ export class ChatService {
     this.logger.log(`System message contains context chunks: ${chatMessages[0]?.content?.includes('[CONTEXT')}`);
     this.logger.log(`User message: ${chatMessages[chatMessages.length - 1]?.content}`);
 
-    return this.aiGatewayService.callChatCompletionsStream(chatMessages);
+    try {
+      return this.aiGatewayService.callChatCompletionsStream(chatMessages);
+    } catch (error) {
+      this.logger.error(`AI Gateway streaming error for user ${userId}: ${error.message}`);
+      
+      // Return an observable that emits an error message
+      return new Observable<string>(subscriber => {
+        let errorMessage = 'AI service is temporarily unavailable. Please try again in a few moments.';
+        
+        if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+          errorMessage = 'Request timed out. Please try again.';
+        } else if (!error.message.includes('AI service unavailable')) {
+          errorMessage = 'Failed to process your request. Please try again.';
+        }
+        
+        subscriber.error(new Error(errorMessage));
+      });
+    }
   }
 } 

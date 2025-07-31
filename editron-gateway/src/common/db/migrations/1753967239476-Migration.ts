@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Migration1753948732583 implements MigrationInterface {
-    name = 'Migration1753948732583'
+export class Migration1753967239476 implements MigrationInterface {
+    name = 'Migration1753967239476'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "users" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "email" character varying, "name" character varying NOT NULL, "personal_number" character varying, "profile_picture" character varying, "google_id" character varying, "facebook_id" character varying, "google_access_token" character varying, "google_refresh_token" character varying, "google_token_expiry" TIMESTAMP, CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "UQ_0bd5012aeb82628e07f6a1be53b" UNIQUE ("google_id"), CONSTRAINT "UQ_df199bc6e53abe32d64bbcf2110" UNIQUE ("facebook_id"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`);
@@ -16,7 +16,7 @@ export class Migration1753948732583 implements MigrationInterface {
         await queryRunner.query(`CREATE INDEX "IDX_32a09bcb80f407e783bbad6221" ON "knowledge_items" ("user_id") `);
         await queryRunner.query(`CREATE INDEX "IDX_714e902e9185a3f368914902ed" ON "knowledge_items" ("project_id") `);
         await queryRunner.query(`CREATE INDEX "IDX_85116821114f7c410ac4e2b943" ON "knowledge_items" ("document_id") `);
-        await queryRunner.query(`CREATE TABLE "chat_messages" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "role" "public"."chat_messages_role_enum" NOT NULL, "content" text NOT NULL, "tokens" integer NOT NULL DEFAULT '0', "user_id" integer NOT NULL, CONSTRAINT "PK_40c55ee0e571e268b0d3cd37d10" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "chat_messages" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "role" "public"."chat_messages_role_enum" NOT NULL, "content" text NOT NULL, "tokens" integer NOT NULL DEFAULT '0', "mode" "public"."chat_messages_mode_enum" DEFAULT 'chat', "user_id" integer NOT NULL, CONSTRAINT "PK_40c55ee0e571e268b0d3cd37d10" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_5588b6cea298cedec7063c0d33" ON "chat_messages" ("user_id") `);
         await queryRunner.query(`ALTER TABLE "user_files" ADD CONSTRAINT "FK_8d2cd7418269ab5f7e29926cb18" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "projects" ADD CONSTRAINT "FK_bd55b203eb9f92b0c8390380010" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);

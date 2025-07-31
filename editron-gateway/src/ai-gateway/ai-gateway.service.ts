@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom, catchError, map, Observable, switchMap } from 'rxjs';
+import { firstValueFrom, catchError, map, Observable, switchMap, retry, delay, throwError } from 'rxjs';
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Readable } from 'stream';
 
@@ -29,6 +29,8 @@ export class AiGatewayService {
     private readonly cfWorkerToken: string;
     private readonly embeddingModelId: string;
     private readonly chatModelId: string;
+    private readonly maxRetries = 1;
+    private readonly requestTimeout = 30000; // 30 seconds
 
     constructor(
         private readonly configService: ConfigService,
@@ -81,7 +83,7 @@ export class AiGatewayService {
         const input = {
             messages: messages.map(m => ({ role: m.role, content: m.content })),
             stream: false,
-            max_tokens: 2048, // Reduced from 4096 to 2048
+            max_tokens: 2048,
             temperature: 0.7,
         };
 
@@ -89,27 +91,29 @@ export class AiGatewayService {
 
         try {
             const response = await firstValueFrom(
-                this.httpService.post(url, input, { headers }).pipe(
+                this.httpService.post(url, input, { 
+                    headers,
+                    timeout: this.requestTimeout,
+                }).pipe(
+                    retry(this.maxRetries),
                     catchError((error: AxiosError) => {
-                        this.logger.error(`Workers AI Non-streaming Request Error: ${error.message}`, error.stack);
+                        this.logger.error(`Workers AI Non-streaming Request Error after ${this.maxRetries} retries: ${error.message}`, error.stack);
                         if (error.response) {
                             this.logger.error(`Error Response Status: ${error.response.status}`);
                             this.logger.error(`Error Response Data: ${JSON.stringify(error.response.data)}`);
                         }
-                        throw error;
+                        return throwError(() => new Error(`AI service unavailable: ${error.message}`));
                     }),
                 )
             );
 
             this.logger.debug(`Workers AI non-streaming response received for ${this.chatModelId}`);
             
-            // Handle Workers AI response format
             const result = response.data?.result;
             if (result && typeof result.response === 'string') {
                 return result.response;
             }
             
-            // Fallback for other formats
             if (result && result.choices && result.choices[0] && result.choices[0].message) {
                 return result.choices[0].message.content;
             }
@@ -144,21 +148,20 @@ export class AiGatewayService {
         return this.httpService.post(url, input, {
             headers,
             responseType: 'stream',
+            timeout: this.requestTimeout,
         }).pipe(
+            retry(this.maxRetries),
             map((response: AxiosResponse<Readable>) => response.data),
             switchMap(stream => {
                 return new Observable<string>(subscriber => {
                     const decoder = new TextDecoder();
-                    let buffer = ''; // Buffer for partial data
+                    let buffer = '';
 
                     stream.on('data', (chunk: Buffer) => {
                         try {
-                            // Append new chunk to buffer
                             buffer += chunk.toString('utf-8');
                             
-                            // Process complete lines from buffer
                             const lines = buffer.split('\n');
-                            // Keep the last incomplete line in buffer
                             buffer = lines.pop() || '';
 
                             for (const line of lines) {
@@ -174,13 +177,11 @@ export class AiGatewayService {
                                     try {
                                         const parsedJson = JSON.parse(eventData);
                                         
-                                        // Handle Workers AI response format
                                         if (parsedJson && typeof parsedJson.response === 'string') {
                                             if (parsedJson.response.length > 0) {
                                                 subscriber.next(parsedJson.response);
                                             }
                                         }
-                                        // Handle OpenAI format (fallback)
                                         else if (parsedJson?.choices?.[0]?.delta?.content) {
                                             subscriber.next(parsedJson.choices[0].delta.content);
                                         }
@@ -203,7 +204,6 @@ export class AiGatewayService {
                     stream.on('end', () => {
                         this.logger.log(`Stream ended event received`);
                         
-                        // Process any remaining buffer content
                         if (buffer.trim() && buffer.startsWith('data: ')) {
                             const eventData = buffer.substring(6).trim();
                             if (eventData && eventData !== '[DONE]') {
@@ -230,12 +230,12 @@ export class AiGatewayService {
                 });
             }),
             catchError((error: AxiosError) => {
-                this.logger.error(`Workers AI Streaming Request Error: ${error.message}`, error.stack);
+                this.logger.error(`Workers AI Streaming Request Error after ${this.maxRetries} retries: ${error.message}`, error.stack);
                 if (error.response) {
                     this.logger.error(`Error Response Status: ${error.response.status}`);
                     this.logger.error(`Error Response Data: ${JSON.stringify(error.response.data)}`);
                 }
-                throw error;
+                return throwError(() => new Error(`AI service unavailable: ${error.message}`));
             }),
         );
     }
@@ -263,6 +263,7 @@ export class AiGatewayService {
         const requestConfig: AxiosRequestConfig = {
             headers,
             responseType: 'json',
+            timeout: this.requestTimeout,
             ...requestConfigOverrides
         };
 
@@ -271,13 +272,14 @@ export class AiGatewayService {
         try {
             const response = await firstValueFrom(
                 this.httpService.post(url, input, requestConfig).pipe(
+                    retry(this.maxRetries),
                     catchError((error: AxiosError) => {
                         this.logger.error(`AI Request Error for target ${target}, model ${modelId}: ${error.message}`, error.stack);
                         if (error.response) {
                             this.logger.error(`Error Response Status: ${error.response.status}`);
                             this.logger.error(`Error Response Data: ${JSON.stringify(error.response.data)}`);
                         }
-                        throw error;
+                        return throwError(() => new Error(`AI service unavailable: ${error.message}`));
                     }),
                 )
             );
@@ -290,7 +292,7 @@ export class AiGatewayService {
             return response.data as T;
         } catch (error) {
             this.logger.error(`Failed to complete AI request for target ${target}, model ${modelId}`, error.message);
-            return null;
+            throw error;
         }
     }
 } 

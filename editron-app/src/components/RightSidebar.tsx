@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Send, ChevronLeft, ChevronDown } from 'lucide-react';
+import { MessageSquare, Send, ChevronLeft, ChevronDown, Bot } from 'lucide-react';
 import { apiClient } from '../utils/api';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import { setGlobalAddMessage, getGlobalAgentRequest } from './EditorPage';
 
 interface RightSidebarProps {
@@ -16,6 +17,7 @@ interface RightSidebarProps {
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  mode?: 'chat' | 'agent';
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggleCollapse, onAgentRequest, documentUuid, projectUuid }) => {
@@ -27,7 +29,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
 
   // Check if we're on an editor page
   const isEditorPage = !!documentUuid;
-
 
   // Set default mode based on page type - automatically switch on navigation
   useEffect(() => {
@@ -45,6 +46,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
       setMessages(historyMessages.map((msg: any) => ({
         role: msg.role,
         content: msg.content,
+        mode: msg.mode,
       })));
     } catch (error) {
       console.error("Failed to fetch chat history:", error);
@@ -58,7 +60,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
 
   // Set global add message function
   useEffect(() => {
-    const addMessage = (message: { role: 'user' | 'assistant'; content: string }) => {
+    const addMessage = (message: { role: 'user' | 'assistant'; content: string; mode?: 'chat' | 'agent' }) => {
       setMessages(prev => [...prev, message]);
     };
     
@@ -102,7 +104,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
         
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: 'Sorry, agent mode is not available for this document. Please try again later.' 
+          content: 'Sorry, agent mode is not available for this document. Please try again later.',
+          mode: 'agent'
         }]);
         return;
       }
@@ -112,11 +115,11 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
     console.log('Chat mode: processing chat query');
     setIsLoading(true);
 
-    const assistantMessage: ChatMessage = { role: 'assistant', content: '' };
+    const assistantMessage: ChatMessage = { role: 'assistant', content: '', mode: isAgentMode ? 'agent' : 'chat' };
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      const reader = await apiClient.chatQuery(promptText, documentUuid, projectUuid, 'chat');
+      const reader = await apiClient.chatQuery(promptText, documentUuid, projectUuid, isAgentMode ? 'agent' : 'chat');
       
       const decoder = new TextDecoder();
       let done = false;
@@ -152,7 +155,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
       setMessages(prev => prev.slice(0, -1));
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please try again.' 
+        content: 'Sorry, I encountered an error. Please try again.',
+        mode: isAgentMode ? 'agent' : 'chat'
       }]);
     } finally {
       setIsLoading(false);
@@ -222,11 +226,23 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
               className={`flex items-start gap-3 min-w-0 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
               {/* Message Bubble */}
-              <div className={`max-w-[85%] min-w-0 p-4 rounded-2xl ${
+              <div className={`max-w-[85%] min-w-0 p-4 rounded-2xl relative ${
                 msg.role === 'user' 
                   ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-br-md' 
+                  : msg.mode === 'agent'
+                  ? 'bg-gradient-to-br from-blue-50 to-indigo-100 text-neutral-800 rounded-bl-md border border-blue-200'
                   : 'bg-white text-neutral-800 rounded-bl-md border border-neutral-200'
               }`}>
+                {/* Agent Badge */}
+                {msg.role === 'assistant' && msg.mode === 'agent' && (
+                  <div className="absolute -top-2 -left-2">
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2 py-1 flex items-center gap-1">
+                      <Bot size={10} />
+                      Agent
+                    </Badge>
+                  </div>
+                )}
+                
                 <p className="text-sm leading-relaxed m-0 whitespace-pre-wrap break-words">
                   {msg.content || (msg.role === 'assistant' && isLoading ? (
                     <span className="opacity-70">

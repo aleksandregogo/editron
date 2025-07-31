@@ -4,9 +4,9 @@ import { Observable, map, tap, finalize } from 'rxjs';
 import { AuthUser } from '../auth/decorators/auth-user.decorator';
 import { UserInfo } from '../auth/interfaces/user-info.interface';
 import { ChatService } from './chat.service';
-import { ChatQueryDto } from './dto/chat-query.dto';
+import { ChatQueryDto, ChatMode } from './dto/chat-query.dto';
 import { ChatHistoryService } from '../chat-history/chat-history.service';
-import { ChatMessageRole } from '../entities/chat-message.entity';
+import { ChatMessageRole, ChatMessageMode } from '../entities/chat-message.entity';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('chat')
@@ -49,10 +49,15 @@ export class ChatController {
       } as MessageEvent)),
       finalize(async () => {
         if (fullAssistantResponse.trim()) {
+          // Convert ChatMode to ChatMessageMode
+          const messageMode = mode === ChatMode.AGENT ? ChatMessageMode.AGENT : ChatMessageMode.CHAT;
+          
           await this.chatHistoryService.addMessage(
             userInfo.userLocalId,
             ChatMessageRole.ASSISTANT,
             fullAssistantResponse.trim(),
+            undefined,
+            messageMode,
           );
         }
       }),
