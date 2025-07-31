@@ -9,6 +9,7 @@ import { User } from '../entities/user.entity';
 import { HttpModule } from '@nestjs/axios';
 import { JWTStrategy } from './strategies/jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { GoogleApiModule } from '../google-api/google-api.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     TypeOrmModule.forFeature([User]),
     HttpModule,
     ConfigModule,
+    GoogleApiModule,
   ],
   providers: [
     AuthService,

@@ -20,7 +20,8 @@ pub fn run() {
             auth::check_login,
             auth::get_profile,
             auth::logout,
-            auth::get_access_token
+            auth::get_access_token,
+            auth::start_gmail_api_connect_flow
         ])
         .setup(|app| {
             let handle = app.handle().clone();

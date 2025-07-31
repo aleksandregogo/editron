@@ -36,6 +36,8 @@ pub struct UserProfile {
     pub profile_picture: Option<String>,
     #[serde(rename = "authProvider")]
     pub auth_provider: String,
+    #[serde(rename = "isGoogleApiConnected")]
+    pub is_google_api_connected: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -807,6 +809,546 @@ async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result
     }
 }
 
+/// Start a temporary HTTP server to catch Gmail API OAuth callback
+async fn start_gmail_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result<String, String> {
+    log::info!("Starting Gmail API OAuth callback server on port {}", port);
+    
+    let (tx, rx) = oneshot::channel::<String>();
+    let tx = Arc::new(Mutex::new(Some(tx)));
+    let shutdown_tx = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
+
+    let shutdown_tx_clone = shutdown_tx.clone();
+    
+    let callback_route = warp::path!("auth" / "google-api-callback")
+        .and(warp::query::<HashMap<String, String>>())
+        .and(warp::any().map(move || tx.clone()))
+        .and(warp::any().map(move || app_handle.clone()))
+        .and(warp::any().map(move || shutdown_tx_clone.clone()))
+        .and_then(|query_params: HashMap<String, String>, tx: Arc<Mutex<Option<oneshot::Sender<String>>>>, _app: AppHandle, shutdown_tx: Arc<Mutex<Option<oneshot::Sender<()>>>>| async move {
+            log::info!("Gmail API OAuth callback received");
+            log::info!("Query parameters: {:?}", query_params);
+            
+            if let Some(code) = query_params.get("code") {
+                log::info!("Gmail API authorization code received: {}", &code[..10.min(code.len())]);
+                
+                if let Some(sender) = tx.lock().unwrap().take() {
+                    log::info!("Sending code through channel");
+                    let _ = sender.send(code.clone());
+                } else {
+                    log::error!("No sender available in channel");
+                }
+                
+                if let Some(shutdown_sender) = shutdown_tx.lock().unwrap().take() {
+                    tokio::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        let _ = shutdown_sender.send(());
+                    });
+                }
+                
+                Ok::<warp::reply::Html<&str>, warp::Rejection>(warp::reply::html(
+                    r#"
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Gmail API Connected - Editron</title>
+                        <style>
+                            * {
+                                margin: 0;
+                                padding: 0;
+                                box-sizing: border-box;
+                            }
+                            
+                            body {
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                min-height: 100vh;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                padding: 20px;
+                            }
+                            
+                            .container {
+                                background: white;
+                                padding: 48px;
+                                border-radius: 16px;
+                                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                                text-align: center;
+                                max-width: 500px;
+                                width: 100%;
+                            }
+                            
+                            .success-icon {
+                                width: 80px;
+                                height: 80px;
+                                margin: 0 auto 24px;
+                                background: #10b981;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                animation: pulse 2s infinite;
+                            }
+                            
+                            @keyframes pulse {
+                                0% { transform: scale(1); }
+                                50% { transform: scale(1.05); }
+                                100% { transform: scale(1); }
+                            }
+                            
+                            .success-icon svg {
+                                width: 40px;
+                                height: 40px;
+                                fill: white;
+                            }
+                            
+                            h1 {
+                                font-size: 2rem;
+                                font-weight: 700;
+                                color: #1f2937;
+                                margin-bottom: 16px;
+                            }
+                            
+                            p {
+                                color: #6b7280;
+                                font-size: 1.1rem;
+                                margin-bottom: 32px;
+                                line-height: 1.6;
+                            }
+                            
+                            .auto-close-info {
+                                margin-top: 32px;
+                                padding: 20px;
+                                background: #f8fafc;
+                                border-radius: 12px;
+                                border: 1px solid #e2e8f0;
+                            }
+                            
+                            .countdown {
+                                font-size: 18px;
+                                font-weight: 600;
+                                color: #475569;
+                                text-align: center;
+                            }
+                            
+                            #countdown {
+                                color: #4f46e5;
+                                font-size: 24px;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="success-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            
+                            <h1>Gmail API Connected!</h1>
+                            <p>You have successfully connected your Gmail account to Editron. This window will close automatically.</p>
+                            
+                            <div class="auto-close-info">
+                                <div class="countdown" id="countdown-container">
+                                    Closing in <span id="countdown">3</span> seconds...
+                                </div>
+                                <button id="manual-close" onclick="tryCloseWindow()" style="display: none; margin-top: 16px; padding: 8px 16px; border: none; background: #4f46e5; color: white; border-radius: 6px; cursor: pointer;">
+                                    Close This Tab
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            let countdown = 3;
+                            const countdownElement = document.getElementById('countdown');
+                            
+                            function tryCloseWindow() {
+                                try {
+                                    window.close();
+                                    setTimeout(() => {
+                                        document.getElementById('countdown-container').style.display = 'none';
+                                        document.getElementById('manual-close').style.display = 'block';
+                                        document.querySelector('p').innerHTML = 'Gmail API connected successfully! Please close this tab manually or click the button below.';
+                                    }, 1000);
+                                } catch (e) {
+                                    document.getElementById('countdown-container').style.display = 'none';
+                                    document.getElementById('manual-close').style.display = 'block';
+                                    document.querySelector('p').innerHTML = 'Gmail API connected successfully! Please close this tab manually.';
+                                }
+                            }
+                            
+                            function updateCountdown() {
+                                countdownElement.textContent = countdown;
+                                if (countdown <= 0) {
+                                    tryCloseWindow();
+                                    return;
+                                }
+                                countdown--;
+                                setTimeout(updateCountdown, 1000);
+                            }
+                            
+                            setTimeout(updateCountdown, 1000);
+                            
+                            window.addEventListener('blur', () => {
+                                setTimeout(tryCloseWindow, 1000);
+                            });
+                        </script>
+                    </body>
+                    </html>
+                    "#
+                ))
+            } else if let Some(error) = query_params.get("error") {
+                log::error!("Gmail API OAuth error received: {}", error);
+                
+                if let Some(sender) = tx.lock().unwrap().take() {
+                    let _ = sender.send(format!("error:{}", error));
+                }
+                
+                if let Some(shutdown_sender) = shutdown_tx.lock().unwrap().take() {
+                    tokio::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        let _ = shutdown_sender.send(());
+                    });
+                }
+                
+                Ok::<warp::reply::Html<&str>, warp::Rejection>(warp::reply::html(
+                    r#"
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Gmail API Connection Failed - Editron</title>
+                        <style>
+                            * {
+                                margin: 0;
+                                padding: 0;
+                                box-sizing: border-box;
+                            }
+                            
+                            body {
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+                                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                                min-height: 100vh;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                padding: 20px;
+                            }
+                            
+                            .container {
+                                background: white;
+                                padding: 48px;
+                                border-radius: 16px;
+                                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                                text-align: center;
+                                max-width: 500px;
+                                width: 100%;
+                            }
+                            
+                            .error-icon {
+                                width: 80px;
+                                height: 80px;
+                                margin: 0 auto 24px;
+                                background: #ef4444;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            
+                            .error-icon svg {
+                                width: 40px;
+                                height: 40px;
+                                fill: white;
+                            }
+                            
+                            h1 {
+                                font-size: 2rem;
+                                font-weight: 700;
+                                color: #1f2937;
+                                margin-bottom: 16px;
+                            }
+                            
+                            p {
+                                color: #6b7280;
+                                font-size: 1.1rem;
+                                margin-bottom: 32px;
+                                line-height: 1.6;
+                            }
+                            
+                            .auto-close-info {
+                                margin-top: 32px;
+                                padding: 20px;
+                                background: #fef2f2;
+                                border-radius: 12px;
+                                border: 1px solid #fecaca;
+                            }
+                            
+                            .countdown {
+                                font-size: 18px;
+                                font-weight: 600;
+                                color: #991b1b;
+                                text-align: center;
+                            }
+                            
+                            #countdown {
+                                color: #dc2626;
+                                font-size: 24px;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="error-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            
+                            <h1>Gmail API Connection Failed</h1>
+                            <p>There was an error during the Gmail API connection process. Please return to the desktop application and try again.</p>
+                            
+                            <div class="auto-close-info">
+                                <div class="countdown" id="countdown-container">
+                                    Closing in <span id="countdown">5</span> seconds...
+                                </div>
+                                <button id="manual-close" onclick="tryCloseWindow()" style="display: none; margin-top: 16px; padding: 8px 16px; border: none; background: #dc2626; color: white; border-radius: 6px; cursor: pointer;">
+                                    Close This Tab
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            let countdown = 5;
+                            const countdownElement = document.getElementById('countdown');
+                            
+                            function tryCloseWindow() {
+                                try {
+                                    window.close();
+                                    setTimeout(() => {
+                                        document.getElementById('countdown-container').style.display = 'none';
+                                        document.getElementById('manual-close').style.display = 'block';
+                                        document.querySelector('p').innerHTML = 'Gmail API connection failed. Please close this tab manually or click the button below.';
+                                    }, 1000);
+                                } catch (e) {
+                                    document.getElementById('countdown-container').style.display = 'none';
+                                    document.getElementById('manual-close').style.display = 'block';
+                                    document.querySelector('p').innerHTML = 'Gmail API connection failed. Please close this tab manually.';
+                                }
+                            }
+                            
+                            function updateCountdown() {
+                                countdownElement.textContent = countdown;
+                                if (countdown <= 0) {
+                                    tryCloseWindow();
+                                    return;
+                                }
+                                countdown--;
+                                setTimeout(updateCountdown, 1000);
+                            }
+                            
+                            setTimeout(updateCountdown, 1000);
+                            
+                            window.addEventListener('blur', () => {
+                                setTimeout(tryCloseWindow, 1000);
+                            });
+                        </script>
+                        </div>
+                    </body>
+                    </html>
+                    "#
+                ))
+            } else {
+                log::warn!("Gmail API OAuth callback received without code or error");
+                Ok::<warp::reply::Html<&str>, warp::Rejection>(warp::reply::html(
+                    r#"
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Invalid Gmail API Callback - Editron</title>
+                        <style>
+                            * {
+                                margin: 0;
+                                padding: 0;
+                                box-sizing: border-box;
+                            }
+                            
+                            body {
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+                                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                                min-height: 100vh;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                padding: 20px;
+                            }
+                            
+                            .container {
+                                background: white;
+                                padding: 48px;
+                                border-radius: 16px;
+                                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                                text-align: center;
+                                max-width: 500px;
+                                width: 100%;
+                            }
+                            
+                            .warning-icon {
+                                width: 80px;
+                                height: 80px;
+                                margin: 0 auto 24px;
+                                background: #f59e0b;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            
+                            .warning-icon svg {
+                                width: 40px;
+                                height: 40px;
+                                fill: white;
+                            }
+                            
+                            h1 {
+                                font-size: 2rem;
+                                font-weight: 700;
+                                color: #1f2937;
+                                margin-bottom: 16px;
+                            }
+                            
+                            p {
+                                color: #6b7280;
+                                font-size: 1.1rem;
+                                margin-bottom: 32px;
+                                line-height: 1.6;
+                            }
+                            
+                            .auto-close-info {
+                                margin-top: 32px;
+                                padding: 20px;
+                                background: #fffbeb;
+                                border-radius: 12px;
+                                border: 1px solid #fed7aa;
+                            }
+                            
+                            .countdown {
+                                font-size: 18px;
+                                font-weight: 600;
+                                color: #92400e;
+                                text-align: center;
+                            }
+                            
+                            #countdown {
+                                color: #d97706;
+                                font-size: 24px;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="warning-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                            </div>
+                            
+                            <h1>Invalid Gmail API Callback</h1>
+                            <p>No authorization code was received. Please return to the desktop application and try the Gmail API connection process again.</p>
+                            
+                            <div class="auto-close-info">
+                                <div class="countdown" id="countdown-container">
+                                    Closing in <span id="countdown">5</span> seconds...
+                                </div>
+                                <button id="manual-close" onclick="tryCloseWindow()" style="display: none; margin-top: 16px; padding: 8px 16px; border: none; background: #d97706; color: white; border-radius: 6px; cursor: pointer;">
+                                    Close This Tab
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            let countdown = 5;
+                            const countdownElement = document.getElementById('countdown');
+                            
+                            function tryCloseWindow() {
+                                try {
+                                    window.close();
+                                    setTimeout(() => {
+                                        document.getElementById('countdown-container').style.display = 'none';
+                                        document.getElementById('manual-close').style.display = 'block';
+                                        document.querySelector('p').innerHTML = 'Invalid callback received. Please close this tab manually or click the button below.';
+                                    }, 1000);
+                                } catch (e) {
+                                    document.getElementById('countdown-container').style.display = 'none';
+                                    document.getElementById('manual-close').style.display = 'block';
+                                    document.querySelector('p').innerHTML = 'Invalid callback received. Please close this tab manually.';
+                                }
+                            }
+                            
+                            function updateCountdown() {
+                                countdownElement.textContent = countdown;
+                                if (countdown <= 0) {
+                                    tryCloseWindow();
+                                    return;
+                                }
+                                countdown--;
+                                setTimeout(updateCountdown, 1000);
+                            }
+                            
+                            setTimeout(updateCountdown, 1000);
+                            
+                            window.addEventListener('blur', () => {
+                                setTimeout(tryCloseWindow, 1000);
+                            });
+                        </script>
+                        </div>
+                    </body>
+                    </html>
+                    "#
+                ))
+            }
+        });
+
+    let routes = callback_route.with(warp::log("gmail_oauth_callback"));
+    
+    let (shutdown_tx_main, shutdown_rx) = oneshot::channel::<()>();
+    *shutdown_tx.lock().unwrap() = Some(shutdown_tx_main);
+    
+    let (addr, server) = warp::serve(routes)
+        .bind_with_graceful_shutdown(([127, 0, 0, 1], port), async {
+            shutdown_rx.await.ok();
+            log::info!("Gmail API OAuth callback server shutting down");
+        });
+    
+    let server_handle = tokio::spawn(server);
+    
+    log::info!("Gmail API OAuth callback server started on http://localhost:{}", addr.port());
+    
+    tokio::select! {
+        result = rx => {
+            match result {
+                Ok(auth_result) => {
+                    if auth_result.starts_with("error:") {
+                        Err(auth_result.replace("error:", ""))
+                    } else {
+                        Ok(auth_result)
+                    }
+                }
+                Err(_) => Err("Failed to receive Gmail API OAuth callback".to_string())
+            }
+        }
+        _ = tokio::time::sleep(std::time::Duration::from_secs(CONFIG.oauth.timeout_seconds)) => {
+            log::warn!("Gmail API OAuth callback server timed out after {} seconds", CONFIG.oauth.timeout_seconds);
+            Err("Gmail API authentication timed out".to_string())
+        }
+    }
+}
+
 /// Tauri command to start the Google OAuth login flow
 #[tauri::command]
 pub async fn start_login_flow(app: AppHandle) -> Result<(), String> {
@@ -1044,4 +1586,81 @@ pub async fn get_access_token(_app: AppHandle) -> Result<String, String> {
         log::warn!("No access token found for server: {}", server_id);
         Err("No access token available".to_string())
     }
+} 
+
+/// Tauri command to start the Gmail API connection flow
+#[tauri::command]
+pub async fn start_gmail_api_connect_flow(app: AppHandle) -> Result<String, String> {
+    log::info!("Starting Gmail API connection flow");
+    
+    // Get the OAuth URL and code verifier from the backend
+    let server_id = CONFIG.server.default_server_id.clone();
+    let token = {
+        let tokens = ACCESS_TOKENS.lock().unwrap();
+        tokens.get(&server_id)
+            .map(|t| t.access_token.clone())
+            .ok_or_else(|| "No JWT access token found".to_string())?
+    };
+
+    let client = http_client::get_client();
+    let auth_url_response = client
+        .get(&format!("{}/google-api/auth-url", CONFIG.backend_api_url()))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .map_err(|e| {
+            log::error!("Failed to get auth URL from backend: {}", e);
+            format!("Backend request failed: {}", e)
+        })?;
+
+    if !auth_url_response.status().is_success() {
+        let error_body = auth_url_response.text().await.unwrap_or_default();
+        log::error!("Backend auth URL request failed: {}", error_body);
+        return Err("Failed to get auth URL from backend".into());
+    }
+
+    let auth_data: serde_json::Value = auth_url_response.json().await.map_err(|e| {
+        log::error!("Failed to parse auth URL response: {}", e);
+        format!("Failed to parse backend response: {}", e)
+    })?;
+
+    let auth_url = auth_data["authUrl"].as_str().ok_or("No auth URL in response")?;
+    let code_verifier = auth_data["codeVerifier"].as_str().ok_or("No code verifier in response")?;
+    
+    log::info!("Opening browser for Gmail API authentication");
+    
+    let enhanced_url = if auth_url.contains('?') {
+        format!("{}&display=popup", auth_url)
+    } else {
+        format!("{}?display=popup", auth_url)
+    };
+    
+    // Return the code verifier BEFORE starting the OAuth flow
+    let code_verifier_to_return = code_verifier.to_string();
+    
+    // Start the OAuth flow in a separate task
+    let app_clone = app.clone();
+    tokio::spawn(async move {
+        app_clone.opener().open_url(enhanced_url, None::<String>).map_err(|e| {
+            log::error!("Failed to open browser: {}", e);
+            e.to_string()
+        })?;
+
+        // Use fixed port 8080 to match Google Cloud Console configuration
+        let port = 8080;
+        let auth_code = start_gmail_oauth_callback_server(app_clone.clone(), port).await?;
+        
+        log::info!("Gmail API authorization code received, emitting event");
+        log::info!("Code length: {}", auth_code.len());
+        
+        app_clone.emit("gmail_api_code_received", auth_code).map_err(|e| {
+            log::error!("Failed to emit gmail_api_code_received event: {}", e);
+            e.to_string()
+        })?;
+
+        log::info!("Successfully emitted gmail_api_code_received event");
+        Ok::<(), String>(())
+    });
+
+    Ok(code_verifier_to_return)
 } 

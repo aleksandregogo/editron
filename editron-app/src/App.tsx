@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import Layout from "./components/Layout";
 import EditorPage from "./components/EditorPage";
 import { ProjectDashboard } from "./components/ProjectDashboard";
+import Settings from "./components/Settings";
 import { Button } from "@/components/ui/button";
 import { CreateProjectModal } from "./components/CreateProjectModal";
 
@@ -14,6 +15,7 @@ interface UserProfile {
   email: string;
   picture: string;
   authProvider: string;
+  isGoogleApiConnected?: boolean;
 }
 
 interface Project {
@@ -306,6 +308,7 @@ function App() {
             <Route path="/project/:projectUuid" element={<ProjectDashboard />} />
             <Route path="/project/:projectUuid/editor/:uuid" element={<EditorPage />} />
             <Route path="/editor/:uuid" element={<EditorPage />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </Layout>
       )}

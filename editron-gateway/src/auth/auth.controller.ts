@@ -5,11 +5,13 @@ import { UserInfo } from "./interfaces/user-info.interface";
 import { ExchangeCodeDto } from "./dto/exchange-code.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { AuthUser } from "./decorators/auth-user.decorator";
+import { GoogleApiService } from "../google-api/google-api.service";
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly googleApiService: GoogleApiService,
   ) { }
 
   @Get('google/login')
@@ -44,12 +46,15 @@ export class AuthController {
       authProvider: userInfo.authProvider
     }, null, 2));
 
+    const isGoogleApiConnected = await this.googleApiService.isGoogleApiConnected(userInfo.user.id);
+
     const response = {
       id: userInfo.user.id,
       email: userInfo.user.email,
       name: userInfo.user.name,
       profilePicture: userInfo.user.profilePicture,
       authProvider: userInfo.authProvider,
+      isGoogleApiConnected,
     };
 
     console.log('🔍 DEBUG: Sending profile response:', JSON.stringify(response, null, 2));

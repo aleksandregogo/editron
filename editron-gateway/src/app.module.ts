@@ -10,6 +10,7 @@ import { ChatModule } from './chat/chat.module';
 import { ChatHistoryModule } from './chat-history/chat-history.module';
 import { RedisModule } from './redis/redis.module';
 import { ProjectModule } from './project/project.module';
+import { GoogleApiModule } from './google-api/google-api.module';
 import { User } from './entities/user.entity';
 import { Document } from './entities/document.entity';
 import { UserFile } from './entities/user-file.entity';
@@ -46,6 +47,7 @@ import { Project } from './entities/project.entity';
     ChatHistoryModule,
     RedisModule,
     ProjectModule,
+    GoogleApiModule,
   ],
   controllers: [],
   providers: [],

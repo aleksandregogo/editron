@@ -20,4 +20,13 @@ export class User extends Defentity {
 
   @Column({ nullable: true, unique: true, name: 'facebook_id' })
   facebookId: string;
+
+  @Column({ nullable: true, name: 'google_access_token' })
+  googleAccessToken: string;
+
+  @Column({ nullable: true, name: 'google_refresh_token' })
+  googleRefreshToken: string;
+
+  @Column({ nullable: true, name: 'google_token_expiry' })
+  googleTokenExpiry: Date;
 } 

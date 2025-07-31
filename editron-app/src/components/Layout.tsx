@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Folder, FolderPlus, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Folder, FolderPlus, LogOut, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateProjectModal } from './CreateProjectModal';
 import { RightSidebar } from './RightSidebar';
@@ -265,6 +265,15 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
             >
               {isLeftSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
               {!isLeftSidebarCollapsed && <span className="truncate ml-3">Collapse</span>}
+            </Button>
+            <Button
+              onClick={() => navigate('/settings')}
+              variant="ghost"
+              size="sm"
+              className="w-full h-12 rounded-none border-0 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
+            >
+              <Settings className="w-5 h-5" />
+              {!isLeftSidebarCollapsed && <span className="truncate ml-3">Settings</span>}
             </Button>
             <Button
               onClick={handleLogout}
