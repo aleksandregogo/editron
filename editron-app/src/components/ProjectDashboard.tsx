@@ -289,60 +289,58 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
             {documents.map((doc) => (
               <Card
                 key={doc.uuid}
-                className="card-modern group cursor-pointer"
+                className="card-modern group cursor-pointer relative"
               >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle 
-                      className="flex items-start gap-3 flex-1 text-neutral-900"
-                      onClick={() => handleDocumentClick(doc.uuid)}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-2 right-2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <FileText className="w-5 h-5 mt-0.5 flex-shrink-0 text-primary-500" />
-                      <span className="truncate">{doc.title}</span>
-                    </CardTitle>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          className="cursor-pointer"
-                          onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            handleDocumentClick(doc.uuid);
-                          }}
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Open
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={(e) => e.preventDefault()}
-                          className="text-red-600 focus:text-red-600 cursor-pointer"
-                        >
-                          <DeleteConfirmationDialog
-                            title="Delete Document"
-                            description={`Are you sure you want to delete "${doc.title}"? This will permanently delete the document and all its associated data, including files from cloud storage. This action cannot be undone.`}
-                            confirmText="Delete Document"
-                            onConfirm={() => handleDocumentDelete(doc.uuid)}
-                            itemName={doc.title}
-                            trigger={
-                              <div className="flex items-center w-full">
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </div>
-                            }
-                          />
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" side="bottom" sideOffset={4}>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        handleDocumentClick(doc.uuid);
+                      }}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Open
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(e) => e.preventDefault()}
+                      className="text-red-600 focus:text-red-600 cursor-pointer"
+                    >
+                      <DeleteConfirmationDialog
+                        title="Delete Document"
+                        description={`Are you sure you want to delete "${doc.title}"? This will permanently delete the document and all its associated data, including files from cloud storage. This action cannot be undone.`}
+                        confirmText="Delete Document"
+                        onConfirm={() => handleDocumentDelete(doc.uuid)}
+                        itemName={doc.title}
+                        trigger={
+                          <div className="flex items-center w-full">
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </div>
+                        }
+                      />
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <CardHeader>
+                  <CardTitle 
+                    className="flex items-start gap-3 text-neutral-900 pr-8"
+                    onClick={() => handleDocumentClick(doc.uuid)}
+                  >
+                    <FileText className="w-5 h-5 mt-0.5 flex-shrink-0 text-primary-500" />
+                    <span className="truncate">{doc.title}</span>
+                  </CardTitle>
                   <CardDescription>
                     <div className="flex items-center justify-between">
                       <span className="capitalize text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-600 font-medium">
