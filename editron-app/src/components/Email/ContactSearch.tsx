@@ -109,6 +109,7 @@ const ContactSearch = ({ onSelectContact, selectedEmails, children }: ContactSea
             onValueChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
+            className="input-modern"
           />
           <CommandList>
             {isLoading ? (
@@ -129,24 +130,24 @@ const ContactSearch = ({ onSelectContact, selectedEmails, children }: ContactSea
                   <CommandItem
                     key={contact.email}
                     onSelect={() => handleSelectContact(contact)}
-                    className="flex items-center space-x-2"
+                    className="flex items-center space-x-2 text-neutral-900 hover:bg-neutral-100"
                   >
                     <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-xs">
+                      <AvatarFallback className="text-xs bg-gradient-to-br from-primary-500 to-primary-600 text-white">
                         {contact.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">{contact.name}</span>
-                      <span className="text-xs text-muted-foreground">{contact.email}</span>
+                      <span className="text-sm font-medium text-neutral-900">{contact.name}</span>
+                      <span className="text-xs text-neutral-600">{contact.email}</span>
                     </div>
                   </CommandItem>
                 ))}
               </CommandGroup>
             ) : searchQuery ? (
-              <CommandEmpty>No contacts found.</CommandEmpty>
+              <CommandEmpty className="text-neutral-600">No contacts found.</CommandEmpty>
             ) : (
-              <div className="p-4 text-center text-sm text-muted-foreground">
+              <div className="p-4 text-center text-sm text-neutral-600">
                 Start typing to search contacts...
               </div>
             )}

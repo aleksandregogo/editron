@@ -117,26 +117,26 @@ export default function Settings() {
     return (
       <div className="container mx-auto p-6">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+          <div className="h-8 bg-neutral-200 rounded w-1/4 mb-4"></div>
+          <div className="h-64 bg-neutral-200 rounded"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-4xl bg-neutral-50 min-h-screen">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Settings</h1>
+        <p className="text-neutral-600">
           Manage your account settings and integrations.
         </p>
       </div>
 
       <div className="grid gap-6">
-        <Card>
+        <Card className="card-modern">
           <CardHeader>
-            <CardTitle>Account Information</CardTitle>
+            <CardTitle className="text-neutral-900">Account Information</CardTitle>
             <CardDescription>
               Your account details and authentication information.
             </CardDescription>
@@ -151,8 +151,8 @@ export default function Settings() {
                 />
               )}
               <div>
-                <h3 className="font-semibold">{profile.name}</h3>
-                <p className="text-sm text-muted-foreground">{profile.email}</p>
+                <h3 className="font-semibold text-neutral-900">{profile.name}</h3>
+                <p className="text-sm text-neutral-600">{profile.email}</p>
                 <Badge variant="secondary" className="mt-1">
                   {profile.authProvider}
                 </Badge>
@@ -161,9 +161,9 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-modern">
           <CardHeader>
-            <CardTitle>Integrations</CardTitle>
+            <CardTitle className="text-neutral-900">Integrations</CardTitle>
             <CardDescription>
               Connect external services to enhance your experience.
             </CardDescription>
@@ -182,8 +182,8 @@ export default function Settings() {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="font-medium">Gmail API</h4>
-                  <p className="text-sm text-muted-foreground">
+                  <h4 className="font-medium text-neutral-900">Gmail API</h4>
+                  <p className="text-sm text-neutral-600">
                     Connect your Gmail account for email composition and contact access.
                   </p>
                 </div>
@@ -199,7 +199,7 @@ export default function Settings() {
                       disabled={loading}
                       variant="outline"
                       size="sm"
-                      className="text-red-600 border-red-600 hover:bg-red-50"
+                      className="btn-secondary text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
                     >
                       {loading ? "Disconnecting..." : "Disconnect"}
                     </Button>
@@ -208,7 +208,7 @@ export default function Settings() {
                   <Button
                     onClick={handleConnectGmail}
                     disabled={loading}
-                    className="bg-red-600 hover:bg-red-700"
+                    className="btn-primary bg-red-600 hover:bg-red-700"
                   >
                     {loading ? "Connecting..." : "Connect Gmail"}
                   </Button>
@@ -216,7 +216,7 @@ export default function Settings() {
               </div>
             </div>
             <Separator />
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-neutral-600">
               <p>
                 Connecting your Gmail account allows Editron to:
               </p>

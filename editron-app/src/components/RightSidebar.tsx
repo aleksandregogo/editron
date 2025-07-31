@@ -163,10 +163,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
   if (isCollapsed) {
     return (
       <div 
-        className="w-full h-full cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-center"
+        className="w-full h-full cursor-pointer hover:bg-neutral-100 transition-colors flex items-center justify-center"
         onClick={onToggleCollapse}
       >
-        <div className="rotate-90 origin-center whitespace-nowrap text-sm font-medium text-muted-foreground flex items-center gap-2">
+        <div className="rotate-90 origin-center whitespace-nowrap text-sm font-medium text-neutral-600 flex items-center gap-2">
           <MessageSquare size={18} />
           <span>Chat</span>
         </div>
@@ -178,16 +178,16 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card flex-shrink-0">
+      <div className="flex items-center justify-between p-4 border-b border-neutral-200 bg-white flex-shrink-0">
         <div className="flex items-center gap-3">
-          <MessageSquare size={20} className="text-primary" />
-          <span className="text-sm font-semibold text-foreground">AI Assistant</span>
+          <MessageSquare size={20} className="text-primary-500" />
+          <span className="text-sm font-semibold text-neutral-900">AI Assistant</span>
         </div>
         <Button
           onClick={onToggleCollapse}
           variant="ghost"
           size="sm"
-          className="w-8 h-8 p-0 hover:bg-muted"
+          className="w-8 h-8 p-0 hover:bg-neutral-100"
         >
           <ChevronLeft className="w-4 h-4" />
         </Button>
@@ -196,17 +196,17 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
       {/* Messages Area */}
       <div 
         ref={scrollAreaRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-muted"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-neutral-50 scrollbar-thin scrollbar-thumb-border scrollbar-track-muted"
       >
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <MessageSquare size={24} className="text-muted-foreground" />
+            <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+              <MessageSquare size={24} className="text-neutral-400" />
             </div>
-            <h4 className="text-base font-medium mb-2 text-foreground">
+            <h4 className="text-base font-medium mb-2 text-neutral-900">
               Start a conversation
             </h4>
-            <p className="text-sm text-muted-foreground max-w-[200px]">
+            <p className="text-sm text-neutral-600 max-w-[200px]">
               {isEditorPage 
                 ? 'Ask questions about this document or request edits'
                 : 'Ask questions about your document library'
@@ -221,25 +221,16 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
               key={i} 
               className={`flex items-start gap-3 min-w-0 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
-              {/* Avatar */}
-              {/* <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                msg.role === 'user' 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-muted text-primary'
-              }`}>
-                {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-              </div> */}
-              
               {/* Message Bubble */}
-              <div className={`max-w-[85%] min-w-0 p-3 rounded-lg ${
+              <div className={`max-w-[85%] min-w-0 p-4 rounded-2xl ${
                 msg.role === 'user' 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-card text-foreground'
+                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-br-md' 
+                  : 'bg-white text-neutral-800 rounded-bl-md border border-neutral-200'
               }`}>
                 <p className="text-sm leading-relaxed m-0 whitespace-pre-wrap break-words">
                   {msg.content || (msg.role === 'assistant' && isLoading ? (
                     <span className="opacity-70">
-                      <span className="animate-pulse">Thinking</span>
+                      <span className="loading-pulse">Thinking</span>
                       <span className="animate-bounce">...</span>
                     </span>
                   ) : '')}
@@ -251,7 +242,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
       </div>
       
       {/* Input Form */}
-      <div className="p-4 border-t border-border bg-card flex-shrink-0">
+      <div className="p-4 border-t border-neutral-200 bg-white flex-shrink-0">
         <form onSubmit={handleSubmit} className="flex gap-3 items-end">
           <div className="flex-1 relative">
             <textarea
@@ -270,7 +261,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
               }
               disabled={isLoading}
               rows={3}
-              className="w-full min-h-[80px] max-h-[200px] p-4 pr-16 pb-8 border border-input rounded-lg bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
+              className="w-full min-h-[80px] max-h-[200px] p-4 pr-16 pb-8 border border-neutral-200 rounded-lg bg-white text-neutral-900 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200"
             />
             
             {/* Mode Dropdown - bottom-left, only visible on editor pages */}
@@ -281,7 +272,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      className="h-7 px-2 text-xs text-neutral-500 hover:text-neutral-700"
                     >
                       {isAgentMode ? 'Agent' : 'Ask'}
                       <ChevronDown size={12} className="ml-1" />
@@ -293,7 +284,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
                         console.log('Switching to Agent mode');
                         setIsAgentMode(true);
                       }}
-                      className={isAgentMode ? "bg-accent" : "" + "cursor-pointer"}
+                      className={isAgentMode ? "bg-neutral-100" : "" + "cursor-pointer"}
                     >
                       Agent
                     </DropdownMenuItem>
@@ -302,7 +293,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
                         console.log('Switching to Ask mode');
                         setIsAgentMode(false);
                       }}
-                      className={!isAgentMode ? "bg-accent" : "" + "cursor-pointer"}
+                      className={!isAgentMode ? "bg-neutral-100" : "" + "cursor-pointer"}
                     >
                       Ask
                     </DropdownMenuItem>
@@ -316,7 +307,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
               type="submit"
               disabled={isLoading || !input.trim()}
               size="sm"
-              className="absolute bottom-3 right-3 w-8 h-8 p-0 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="absolute bottom-3 right-3 w-8 h-8 p-0 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white shadow-sm"
             >
               <Send size={14} />
             </Button>

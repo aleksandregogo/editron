@@ -152,19 +152,19 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-neutral-50 overflow-hidden">
       {/* Left Sidebar */}
-      <div className={`flex flex-col bg-gray-800 text-gray-50 border-r border-gray-700 transition-all duration-300 ${isLeftSidebarCollapsed ? 'w-16' : 'w-64'
+      <div className={`flex flex-col bg-white border-r border-neutral-200 transition-all duration-300 ${isLeftSidebarCollapsed ? 'w-16' : 'w-64'
         }`}>
         {/* User Profile Section */}
-        <div className="p-4 border-b border-gray-700 flex-shrink-0">
+        <div className="p-4 border-b border-neutral-200 flex-shrink-0">
           {isLeftSidebarCollapsed ? (
             <div className="flex justify-center">
               <Avatar className="w-10 h-10">
                 {profile?.profilePicture ? (
                   <AvatarImage src={profile.profilePicture} alt="Profile" />
                 ) : (
-                  <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+                  <AvatarFallback className="bg-gradient-to-br from-primary-500 to-primary-600 text-white text-lg font-semibold">
                     {profile?.name?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 )}
@@ -176,16 +176,16 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
                 {profile?.profilePicture ? (
                   <AvatarImage src={profile.profilePicture} alt="Profile" />
                 ) : (
-                  <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+                  <AvatarFallback className="bg-gradient-to-br from-primary-500 to-primary-600 text-white text-lg font-semibold">
                     {profile?.name?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 )}
               </Avatar>
               <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold mb-1 text-gray-50 truncate">
+                <h3 className="text-sm font-semibold mb-1 text-neutral-900 truncate">
                   {profile?.name}
                 </h3>
-                <p className="text-xs text-gray-400 truncate">
+                <p className="text-xs text-neutral-500 truncate">
                   {profile?.email}
                 </p>
               </div>
@@ -198,7 +198,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
           <div className="px-4">
             {!isLeftSidebarCollapsed && (
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
                   Projects
                 </h4>
                 <CreateProjectModal
@@ -214,7 +214,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-6 w-6 p-0 text-gray-400 hover:text-gray-100 hover:bg-gray-700 rounded-md"
+                      className="h-6 w-6 p-0 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-md"
                     >
                       <FolderPlus className="w-4 h-4" />
                     </Button>
@@ -224,11 +224,11 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
             )}
 
             {isLoading ? (
-              <div className={`text-sm text-gray-400 ${isLeftSidebarCollapsed ? 'text-center' : 'px-3'} py-2`}>
+              <div className={`text-sm text-neutral-400 ${isLeftSidebarCollapsed ? 'text-center' : 'px-3'} py-2`}>
                 {isLeftSidebarCollapsed ? '...' : 'Loading...'}
               </div>
             ) : projects.length === 0 ? (
-              <div className={`text-sm text-gray-400 ${isLeftSidebarCollapsed ? 'text-center' : 'px-3'} py-2`}>
+              <div className={`text-sm text-neutral-400 ${isLeftSidebarCollapsed ? 'text-center' : 'px-3'} py-2`}>
                 {isLeftSidebarCollapsed ? '...' : 'No projects'}
               </div>
             ) : (
@@ -236,9 +236,9 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
                 {projects.map((project) => (
                   <button
                     key={project.uuid}
-                    className={`flex items-center w-full px-3 py-2.5 text-sm font-medium transition-colors rounded-md ${activeProjectId === project.uuid
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100'
+                    className={`flex items-center w-full px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg ${activeProjectId === project.uuid
+                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm'
+                        : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                       }`}
                     onClick={() => handleProjectClick(project.uuid)}
                     title={isLeftSidebarCollapsed ? project.name : undefined}
@@ -255,13 +255,13 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
         </div>
 
         {/* Bottom Actions */}
-        <div className="border-t border-gray-700 flex-shrink-0">
+        <div className="border-t border-neutral-200 flex-shrink-0">
           <div className="flex flex-col">
             <Button
               onClick={() => setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed)}
               variant="ghost"
               size="sm"
-              className="w-full h-12 rounded-none border-0 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
+              className="w-full h-12 rounded-none border-0 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
             >
               {isLeftSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
               {!isLeftSidebarCollapsed && <span className="truncate ml-3">Collapse</span>}
@@ -270,7 +270,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
               onClick={() => navigate('/settings')}
               variant="ghost"
               size="sm"
-              className="w-full h-12 rounded-none border-0 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
+              className="w-full h-12 rounded-none border-0 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
             >
               <Settings className="w-5 h-5" />
               {!isLeftSidebarCollapsed && <span className="truncate ml-3">Settings</span>}
@@ -279,7 +279,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
               onClick={handleLogout}
               variant="ghost"
               size="sm"
-              className="w-full h-12 rounded-none border-0 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
+              className="w-full h-12 rounded-none border-0 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
             >
               <LogOut className="w-5 h-5" />
               {!isLeftSidebarCollapsed && <span className="truncate ml-3">Logout</span>}
@@ -298,7 +298,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
 
       {/* Right Sidebar */}
       {showRightSidebar && (
-        <div className={`fixed top-0 right-0 h-screen bg-card border-l border-border transition-all duration-300 z-30 ${isRightSidebarCollapsed ? 'w-12' : 'w-96'
+        <div className={`fixed top-0 right-0 h-screen bg-white border-l border-neutral-200 transition-all duration-300 z-30 ${isRightSidebarCollapsed ? 'w-12' : 'w-96'
           }`}>
           <RightSidebar
             isCollapsed={isRightSidebarCollapsed}

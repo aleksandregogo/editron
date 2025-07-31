@@ -64,7 +64,7 @@ export const DeleteConfirmationDialog = ({
   };
 
   const getDefaultTrigger = () => (
-    <Button variant="outline" size="sm">
+    <Button variant="outline" size="sm" className="btn-secondary">
       <Trash2 className="w-4 h-4 mr-2" />
       Delete
     </Button>
@@ -77,10 +77,10 @@ export const DeleteConfirmationDialog = ({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-neutral-900">{title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-neutral-600">
             {description}
           </p>
           <div className="flex gap-3 pt-4">
@@ -89,7 +89,7 @@ export const DeleteConfirmationDialog = ({
               variant="outline"
               onClick={() => handleOpenChange(false)}
               disabled={isDeleting}
-              className="flex-1"
+              className="btn-secondary flex-1"
             >
               {cancelText}
             </Button>
@@ -98,7 +98,7 @@ export const DeleteConfirmationDialog = ({
               variant="destructive"
               onClick={handleConfirm}
               disabled={isDeleting}
-              className="flex-1"
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
             >
               {isDeleting ? 'Deleting...' : confirmText}
             </Button>

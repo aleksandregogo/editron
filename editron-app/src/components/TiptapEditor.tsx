@@ -30,7 +30,7 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
     editable,
     editorProps: {
       attributes: {
-        class: 'prose prose-lg max-w-none focus:outline-none min-h-[500px] px-12 py-8',
+        class: 'prose prose-lg max-w-none focus:outline-none min-h-[500px] px-12 py-8 text-neutral-900',
       },
     },
     onUpdate: ({ editor }) => {
@@ -70,7 +70,7 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
       disabled={disabled}
       variant={isActive ? "default" : "ghost"}
       size="sm"
-      className="h-8 w-8 p-0"
+      className={`h-8 w-8 p-0 ${isActive ? 'bg-primary-500 text-white hover:bg-primary-600' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'}`}
       title={title}
     >
       {children}
@@ -80,16 +80,16 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
   if (!editor) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-16 text-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-muted-foreground">Loading editor...</p>
+        <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-neutral-600">Loading editor...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-border rounded-lg shadow-sm overflow-hidden flex flex-col h-full">
+    <div className="bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
       {editable && (
-        <div className="bg-muted/50 border-b border-border p-3 flex-shrink-0 sticky top-0 z-10">
+        <div className="bg-neutral-50 border-b border-neutral-200 p-3 flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-1 flex-wrap">
             <div className="flex items-center gap-1">
               <ToolbarButton
@@ -199,11 +199,11 @@ const TiptapEditor = ({ initialContent, onContentChange, editable = true }: Tipt
         </div>
       )}
       
-      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto mt-8 mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
+      <div className="flex-1 overflow-auto bg-neutral-50">
+        <div className="max-w-4xl mx-auto mt-8 mb-8 bg-white shadow-lg rounded-xl overflow-hidden border border-neutral-200">
           <EditorContent 
             editor={editor} 
-            className="prose prose-lg prose-gray dark:prose-invert max-w-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[500px] [&_.ProseMirror]:px-12 [&_.ProseMirror]:py-8"
+            className="prose prose-lg prose-neutral max-w-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[500px] [&_.ProseMirror]:px-12 [&_.ProseMirror]:py-8 [&_.ProseMirror]:text-neutral-900"
           />
         </div>
       </div>

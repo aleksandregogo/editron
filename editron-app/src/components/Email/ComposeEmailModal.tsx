@@ -72,7 +72,7 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Compose Email</DialogTitle>
+          <DialogTitle className="text-neutral-900">Compose Email</DialogTitle>
           <DialogDescription>
             Send an email with your document attached.
           </DialogDescription>
@@ -81,7 +81,7 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
         <div className="space-y-4">
           {/* Recipients */}
           <div className="space-y-2">
-            <label htmlFor="recipients" className="text-sm font-medium">
+            <label htmlFor="recipients" className="text-sm font-medium text-neutral-700">
               To:
             </label>
             <ContactSearch onSelectContact={handleSelectContacts} selectedEmails={recipients}>
@@ -89,7 +89,7 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
                 id="recipients"
                 type="text"
                 placeholder="Enter email addresses or search contacts..."
-                className="cursor-text"
+                className="input-modern cursor-text"
               />
             </ContactSearch>
             {recipients.length > 0 && (
@@ -99,7 +99,7 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
                     {email}
                     <button
                       onClick={() => setRecipients(recipients.filter(e => e !== email))}
-                      className="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5"
+                      className="ml-1 hover:bg-neutral-300/20 rounded-full p-0.5"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -111,7 +111,7 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
 
           {/* Subject */}
           <div className="space-y-2">
-            <label htmlFor="subject" className="text-sm font-medium">
+            <label htmlFor="subject" className="text-sm font-medium text-neutral-700">
               Subject:
             </label>
             <Input
@@ -119,16 +119,17 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
               placeholder="Enter email subject..."
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
+              className="input-modern"
             />
           </div>
 
           {/* Attachment */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            <label className="text-sm font-medium text-neutral-700">
               Attachment:
             </label>
-            <div className="flex items-center space-x-2 p-3 border rounded-md bg-muted/50">
-              <Paperclip className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center space-x-2 p-3 border border-neutral-200 rounded-lg bg-neutral-50">
+              <Paperclip className="h-4 w-4 text-neutral-500" />
               <Badge variant="secondary" className="text-xs">
                 {documentTitle}
               </Badge>
@@ -137,7 +138,7 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
 
           {/* Body */}
           <div className="space-y-2">
-            <label htmlFor="body" className="text-sm font-medium">
+            <label htmlFor="body" className="text-sm font-medium text-neutral-700">
               Message:
             </label>
             <Textarea
@@ -145,16 +146,16 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
               placeholder="Enter your email message..."
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              className="min-h-[200px] resize-none"
+              className="input-modern min-h-[200px] resize-none"
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading} className="btn-secondary">
             Cancel
           </Button>
-          <Button onClick={handleSendEmail} disabled={isLoading || recipients.length === 0 || !subject || !body}>
+          <Button onClick={handleSendEmail} disabled={isLoading || recipients.length === 0 || !subject || !body} className="btn-primary">
             {isLoading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />

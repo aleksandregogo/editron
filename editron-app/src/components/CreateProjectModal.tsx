@@ -149,14 +149,14 @@ export const ProjectModal = ({
   const getDefaultTrigger = () => {
     if (mode === 'edit') {
       return (
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="btn-secondary">
           <Edit className="w-4 h-4 mr-2" />
           Modify
         </Button>
       );
     }
     return (
-      <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100">
         <FolderPlus className="w-4 h-4" />
       </Button>
     );
@@ -175,52 +175,52 @@ export const ProjectModal = ({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{getTitle()}</DialogTitle>
+          <DialogTitle className="text-neutral-900">{getTitle()}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name">Project Name *</Label>
+            <Label htmlFor="name" className="text-neutral-700 font-medium">Project Name *</Label>
             <Input
               id="name"
               placeholder="Enter project name"
               value={formData.name}
               onChange={handleInputChange('name')}
               disabled={isSubmitting}
-              className="w-full"
+              className="input-modern w-full"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className="text-neutral-700 font-medium">Description</Label>
             <Textarea
               id="description"
               placeholder="Brief description of your project (optional)"
               value={formData.description}
               onChange={handleInputChange('description')}
               disabled={isSubmitting}
-              className="w-full"
+              className="input-modern w-full"
               rows={3}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="customInstructions">Custom AI Instructions</Label>
+            <Label htmlFor="customInstructions" className="text-neutral-700 font-medium">Custom AI Instructions</Label>
             <Textarea
               id="customInstructions"
               placeholder="Provide context and instructions for AI interactions within this project (optional)"
               value={formData.customInstructions}
               onChange={handleInputChange('customInstructions')}
               disabled={isSubmitting}
-              className="w-full"
+              className="input-modern w-full"
               rows={4}
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-neutral-500">
               These instructions will be used to provide context to AI responses when working within this project.
             </p>
           </div>
 
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
               {error}
             </div>
           )}
@@ -231,14 +231,14 @@ export const ProjectModal = ({
               variant="outline"
               onClick={() => handleOpenChange(false)}
               disabled={isSubmitting}
-              className="flex-1"
+              className="btn-secondary flex-1"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || !formData.name.trim()}
-              className="flex-1"
+              className="btn-primary flex-1"
             >
               {getSubmitText()}
             </Button>

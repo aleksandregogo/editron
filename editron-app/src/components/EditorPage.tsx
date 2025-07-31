@@ -197,10 +197,10 @@ const EditorPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-neutral-50">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-muted-foreground">Loading document...</p>
+          <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-neutral-600">Loading document...</p>
         </div>
       </div>
     );
@@ -208,16 +208,16 @@ const EditorPage = () => {
 
   if (error || !document) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-neutral-50">
         <div className="text-center space-y-4">
-          <div className="text-destructive text-6xl font-bold">404</div>
-          <h1 className="text-2xl font-semibold text-foreground">
+          <div className="text-red-600 text-6xl font-bold">404</div>
+          <h1 className="text-2xl font-semibold text-neutral-900">
             {error || 'Document not found'}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-neutral-600">
             The document you're looking for doesn't exist or has been moved.
           </p>
-          <Button onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')} className="gap-2">
+          <Button onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')} className="btn-primary gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </Button>
@@ -228,16 +228,16 @@ const EditorPage = () => {
 
   if (document.status === 'PROCESSING') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-neutral-50">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <h2 className="text-xl font-semibold text-foreground">Processing Document</h2>
-          <p className="text-muted-foreground max-w-md">
+          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <h2 className="text-xl font-semibold text-neutral-900">Processing Document</h2>
+          <p className="text-neutral-600 max-w-md">
             Your document is being processed. This usually takes a few minutes. 
             Please check back shortly.
           </p>
           <div className="flex gap-2 justify-center">
-            <Button onClick={fetchDocument} variant="outline">
+            <Button onClick={fetchDocument} variant="outline" className="btn-secondary">
               Check Status
             </Button>
             <Button onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')} variant="ghost">
@@ -251,14 +251,14 @@ const EditorPage = () => {
 
   if (document.status === 'ERROR') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-neutral-50">
         <div className="text-center space-y-4">
-          <div className="text-destructive text-6xl">⚠️</div>
-          <h2 className="text-xl font-semibold text-foreground">Processing Error</h2>
-          <p className="text-muted-foreground max-w-md">
+          <div className="text-red-600 text-6xl">⚠️</div>
+          <h2 className="text-xl font-semibold text-neutral-900">Processing Error</h2>
+          <p className="text-neutral-600 max-w-md">
             There was an error processing your document. Please try uploading it again.
           </p>
-          <Button onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')} className="gap-2">
+          <Button onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')} className="btn-primary gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </Button>
@@ -268,22 +268,22 @@ const EditorPage = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-neutral-50">
       {/* Header */}
-      <header className="border-b border-border bg-card px-6 py-4 flex-shrink-0">
+      <header className="border-b border-neutral-200 bg-white px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               onClick={() => navigate(projectUuid ? `/project/${projectUuid}` : '/')}
               variant="ghost"
               size="sm"
-              className="gap-2"
+              className="gap-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
             <div>
-              <h1 className="text-lg font-semibold text-foreground truncate max-w-md">
+              <h1 className="text-lg font-semibold text-neutral-900 truncate max-w-md">
                 {document.title}
               </h1>
             </div>
@@ -295,16 +295,16 @@ const EditorPage = () => {
                 onClick={() => setIsComposeModalOpen(true)}
                 variant="outline"
                 size="sm"
-                className="gap-2"
+                className="btn-secondary gap-2"
               >
                 <Mail className="w-4 h-4" />
                 Send Email
               </Button>
             )}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm text-neutral-500">
               {isSaving ? (
                 <>
-                  <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-3 h-3 border border-primary-500 border-t-transparent rounded-full animate-spin"></div>
                   <span>Saving...</span>
                 </>
               ) : (
@@ -319,7 +319,7 @@ const EditorPage = () => {
       </header>
 
       {/* Editor Content */}
-      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+      <div className="flex-1 overflow-auto bg-white">
         <TiptapEditor
           initialContent={document.content}
           onContentChange={handleContentChange}

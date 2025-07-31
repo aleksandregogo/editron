@@ -25,15 +25,15 @@ interface AgentReviewModalProps {
 
 const LoadingSkeleton: React.FC = () => (
     <div className="p-6 flex flex-col h-full">
-        <DialogHeader className="pb-4 border-b">
+        <DialogHeader className="pb-4 border-b border-neutral-200">
             <Skeleton className="h-7 w-1/3" />
             <Skeleton className="h-4 w-1/2 mt-2" />
         </DialogHeader>
         <div className="flex-grow py-8 space-y-4">
             <div className="text-center py-8">
-                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-muted-foreground">AI is analyzing your document...</p>
-                <p className="text-sm text-muted-foreground mt-2">This may take a few moments</p>
+                <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-neutral-600">AI is analyzing your document...</p>
+                <p className="text-sm text-neutral-500 mt-2">This may take a few moments</p>
             </div>
             <Skeleton className="h-6 w-3/4" />
             <Skeleton className="h-4 w-full" />
@@ -42,7 +42,7 @@ const LoadingSkeleton: React.FC = () => (
             <Skeleton className="h-16 w-full mt-4" />
             <Skeleton className="h-4 w-full" />
         </div>
-        <DialogFooter className="pt-4 border-t">
+        <DialogFooter className="pt-4 border-t border-neutral-200">
             <Skeleton className="h-10 w-24" />
             <Skeleton className="h-10 w-32" />
         </DialogFooter>
@@ -211,7 +211,7 @@ export const AgentReviewModal: React.FC<AgentReviewModalProps> = ({
   // The declarative renderer using html-react-parser. This is the core of the interactive UI.
   const parsedDiffContent = useMemo(() => {
     if (!processedDiffHtml) {
-      return <div className="text-center py-8 text-muted-foreground">No content to display</div>;
+      return <div className="text-center py-8 text-neutral-600">No content to display</div>;
     }
     
     // If there are no suggestions, just display the original content
@@ -235,18 +235,18 @@ export const AgentReviewModal: React.FC<AgentReviewModalProps> = ({
           switch(suggestion.status) {
             case 'pending':
               finalClass = isInsertion 
-                ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200' 
-                : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200 line-through';
+                ? 'bg-green-100 border-green-300 text-green-800' 
+                : 'bg-red-100 border-red-300 text-red-800 line-through';
               break;
             case 'accepted':
               finalClass = isInsertion 
-                ? 'bg-green-200 dark:bg-green-800/40 border-green-400 dark:border-green-600 text-green-900 dark:text-green-100' 
+                ? 'bg-green-200 border-green-400 text-green-900' 
                 : 'opacity-30 line-through';
               break;
             case 'rejected':
               finalClass = isInsertion 
                 ? 'opacity-30 line-through' 
-                : 'bg-red-200 dark:bg-red-800/40 border-red-400 dark:border-red-600 text-red-900 dark:text-red-100';
+                : 'bg-red-200 border-red-400 text-red-900';
               break;
           }
 
@@ -258,7 +258,7 @@ export const AgentReviewModal: React.FC<AgentReviewModalProps> = ({
             <span className={`${baseClass} ${finalClass} relative group`}>
               {domToReact(domNode.children as DOMNode[])}
               {showTooltip && (
-                <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 z-20 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 p-1 rounded-md bg-white dark:bg-gray-800 border shadow-lg">
+                <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 z-20 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 p-1 rounded-md bg-white border border-neutral-200 shadow-lg">
                   <Button 
                     size="sm" 
                     variant="destructive" 
@@ -299,9 +299,9 @@ export const AgentReviewModal: React.FC<AgentReviewModalProps> = ({
       <DialogContent className="max-w-6xl w-full h-[90vh] flex flex-col p-0 shadow-2xl">
         {isLoading ? <LoadingSkeleton /> : (
           <>
-            <DialogHeader className="p-4 border-b flex-shrink-0 flex flex-row justify-between items-center">
+            <DialogHeader className="p-4 border-b border-neutral-200 flex-shrink-0 flex flex-row justify-between items-center">
               <div>
-                <DialogTitle className="text-lg">Review AI Agent's Changes</DialogTitle>
+                <DialogTitle className="text-lg text-neutral-900">Review AI Agent's Changes</DialogTitle>
                 <DialogDescription>
                   {Object.keys(suggestions).length === 0 
                     ? 'No changes suggested by the AI agent.' 
@@ -311,13 +311,13 @@ export const AgentReviewModal: React.FC<AgentReviewModalProps> = ({
                   }
                 </DialogDescription>
               </div>
-              <Button variant="ghost" size="icon" onClick={undo} disabled={history.length <= 1}>
+              <Button variant="ghost" size="icon" onClick={undo} disabled={history.length <= 1} className="text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">
                 <Undo className="h-4 w-4" />
                 <span className="sr-only">Undo last decision</span>
               </Button>
             </DialogHeader>
             
-            <ScrollArea className="flex-grow bg-background">
+            <ScrollArea className="flex-grow bg-neutral-50">
               <style>{`
                 ins { text-decoration: none !important; }
                 del { text-decoration: none !important; }
@@ -332,28 +332,28 @@ export const AgentReviewModal: React.FC<AgentReviewModalProps> = ({
                 .diff-content strong, .diff-content b { font-weight: 600; }
                 .diff-content em, .diff-content i { font-style: italic; }
               `}</style>
-              <div className="diff-content prose dark:prose-invert max-w-none p-8 bg-white dark:bg-gray-900 min-h-full">
-                <div className="max-w-4xl mx-auto leading-relaxed text-base">
+              <div className="diff-content prose prose-neutral max-w-none p-8 bg-white min-h-full">
+                <div className="max-w-4xl mx-auto leading-relaxed text-base text-neutral-900">
                   {parsedDiffContent}
                 </div>
               </div>
             </ScrollArea>
 
-            <DialogFooter className="p-4 border-t bg-muted/40 flex-shrink-0 justify-between">
+            <DialogFooter className="p-4 border-t border-neutral-200 bg-neutral-50 flex-shrink-0 justify-between">
               {Object.keys(suggestions).length > 0 ? (
                 <>
                   <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleRejectAll} disabled={pendingCount === 0}>Reject Remaining</Button>
-                    <Button variant="outline" onClick={handleConfirmAll} disabled={pendingCount === 0}>Accept Remaining</Button>
+                    <Button variant="outline" onClick={handleRejectAll} disabled={pendingCount === 0} className="btn-secondary">Reject Remaining</Button>
+                    <Button variant="outline" onClick={handleConfirmAll} disabled={pendingCount === 0} className="btn-secondary">Accept Remaining</Button>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleApply}>Apply Changes & Save</Button>
+                    <Button variant="ghost" onClick={onClose} className="text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Cancel</Button>
+                    <Button onClick={handleApply} className="btn-primary">Apply Changes & Save</Button>
                   </div>
                 </>
               ) : (
                 <div className="flex gap-2 ml-auto">
-                  <Button variant="ghost" onClick={onClose}>Close</Button>
+                  <Button variant="ghost" onClick={onClose} className="text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Close</Button>
                 </div>
               )}
             </DialogFooter>

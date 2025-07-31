@@ -198,10 +198,10 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-primary">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white text-lg font-medium">Loading Editron...</p>
         </div>
       </div>
     );
@@ -209,13 +209,29 @@ function App() {
 
   if (!loggedIn) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-8 text-foreground">Welcome to Editron</h1>
-          <p className="text-lg text-muted-foreground mb-8">
-            Your AI-powered document editor and collaborator
-          </p>
-          <Button onClick={handleLogin} size="lg" className="px-8 py-3">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-primary">
+        <div className="glass rounded-2xl shadow-glass text-center max-w-md w-full p-12 mx-4">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-4 gradient-text">Editron</h1>
+            <p className="text-lg text-neutral-700 mb-8">
+              Your AI-powered document editor and collaborator
+            </p>
+            <div className="space-y-4 text-sm text-neutral-600 text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                <span>Intelligent document editing with AI assistance</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                <span>Real-time collaboration and version control</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                <span>Smart project organization and search</span>
+              </div>
+            </div>
+          </div>
+          <Button onClick={handleLogin} size="lg" className="w-full">
             Sign in with Google
           </Button>
         </div>
@@ -228,30 +244,30 @@ function App() {
     return (
       <Router>
         <Layout profile={profile} onLogout={() => setLoggedIn(false)}>
-          <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
-            <div className="bg-card border border-border rounded-2xl shadow-xl text-center max-w-2xl w-full p-12">
+          <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-card">
+            <div className="card-modern text-center max-w-2xl w-full p-12 mx-4">
               <div className="mb-8">
-                <h1 className="text-4xl font-bold mb-4 text-card-foreground">Welcome to Editron! 🎉</h1>
-                <p className="text-lg text-muted-foreground mb-6">
+                <h1 className="text-4xl font-bold mb-4 gradient-text">Welcome to Editron! 🎉</h1>
+                <p className="text-lg text-neutral-600 mb-6">
                   You're all set up! To get started, create your first project to organize your documents and collaborate with AI.
                 </p>
-                <div className="bg-muted/50 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold mb-3 text-card-foreground">What you can do with projects:</h3>
-                  <ul className="text-sm text-muted-foreground space-y-2 text-left">
+                <div className="bg-neutral-50 rounded-xl p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-3 text-neutral-900">What you can do with projects:</h3>
+                  <ul className="text-sm text-neutral-600 space-y-2 text-left">
                     <li className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
+                      <span className="w-2 h-2 bg-primary-500 rounded-full"></span>
                       Organize documents by project or topic
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
+                      <span className="w-2 h-2 bg-primary-500 rounded-full"></span>
                       Set custom AI instructions for each project
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
+                      <span className="w-2 h-2 bg-primary-500 rounded-full"></span>
                       Keep project-specific chat context
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
+                      <span className="w-2 h-2 bg-primary-500 rounded-full"></span>
                       Upload and edit documents within projects
                     </li>
                   </ul>
@@ -272,10 +288,10 @@ function App() {
     return (
       <Router>
         <Layout profile={profile} onLogout={() => setLoggedIn(false)}>
-          <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
-            <div className="bg-card border border-border rounded-2xl shadow-xl text-center max-w-md w-full p-12">
-              <h2 className="text-2xl font-bold mb-4 text-card-foreground">Create Your First Project</h2>
-              <p className="text-muted-foreground mb-8">
+          <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-card">
+            <div className="card-modern text-center max-w-md w-full p-12 mx-4">
+              <h2 className="text-2xl font-bold mb-4 text-neutral-900">Create Your First Project</h2>
+              <p className="text-neutral-600 mb-8">
                 Get started by creating a project to organize your documents.
               </p>
               <CreateProjectModal

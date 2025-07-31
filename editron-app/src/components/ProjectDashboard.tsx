@@ -169,8 +169,8 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading project...</p>
+          <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-neutral-600">Loading project...</p>
         </div>
       </div>
     );
@@ -190,15 +190,15 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
   }
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6 h-full overflow-y-auto">
+    <div className="flex-1 flex flex-col p-6 space-y-6 h-full overflow-y-auto bg-neutral-50">
       {/* Project Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-neutral-900">{project.name}</h1>
           {project.description && (
-            <p className="text-muted-foreground mt-2 max-w-2xl">{project.description}</p>
+            <p className="text-neutral-600 mt-2 max-w-2xl">{project.description}</p>
           )}
-          <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 mt-4 text-sm text-neutral-500">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
               <span>Created {formatDate(project.createdAt)}</span>
@@ -227,15 +227,15 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
 
       {/* Custom Instructions Card */}
       {project.customInstructions && (
-        <Card>
+        <Card className="card-modern">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
+            <CardTitle className="flex items-center gap-2 text-neutral-900">
+              <MessageSquare className="w-5 h-5 text-primary-500" />
               AI Instructions for this Project
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+            <p className="text-sm text-neutral-600 whitespace-pre-wrap">
               {project.customInstructions}
             </p>
           </CardContent>
@@ -245,7 +245,7 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
       {/* Documents Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Documents</h2>
+          <h2 className="text-xl font-semibold text-neutral-900">Documents</h2>
           <div>
             <input
               type="file"
@@ -256,7 +256,7 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
               disabled={isUploading}
             />
             <label htmlFor="file-upload">
-              <Button asChild disabled={isUploading}>
+              <Button asChild disabled={isUploading} className="btn-primary">
                 <span className="cursor-pointer">
                   <Upload className="w-4 h-4 mr-2" />
                   {isUploading ? 'Uploading...' : 'Upload Document'}
@@ -267,15 +267,15 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
         </div>
 
         {documents.length === 0 ? (
-          <Card>
+          <Card className="card-modern">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <FileText className="w-12 h-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No documents yet</h3>
-              <p className="text-muted-foreground text-center mb-6 max-w-md">
+              <FileText className="w-12 h-12 text-neutral-400 mb-4" />
+              <h3 className="text-lg font-medium mb-2 text-neutral-900">No documents yet</h3>
+              <p className="text-neutral-600 text-center mb-6 max-w-md">
                 Upload your first DOCX document to get started with AI-powered editing and chat within this project.
               </p>
               <label htmlFor="file-upload">
-                <Button asChild>
+                <Button asChild className="btn-primary">
                   <span className="cursor-pointer">
                     <Upload className="w-4 h-4 mr-2" />
                     Upload Your First Document
@@ -289,15 +289,15 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
             {documents.map((doc) => (
               <Card
                 key={doc.uuid}
-                className="group cursor-pointer hover:shadow-md transition-shadow"
+                className="card-modern group cursor-pointer"
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle 
-                      className="flex items-start gap-3 flex-1"
+                      className="flex items-start gap-3 flex-1 text-neutral-900"
                       onClick={() => handleDocumentClick(doc.uuid)}
                     >
-                      <FileText className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      <FileText className="w-5 h-5 mt-0.5 flex-shrink-0 text-primary-500" />
                       <span className="truncate">{doc.title}</span>
                     </CardTitle>
                     <DropdownMenu>
@@ -345,10 +345,10 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
                   </div>
                   <CardDescription>
                     <div className="flex items-center justify-between">
-                      <span className="capitalize text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                      <span className="capitalize text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-600 font-medium">
                         {doc.status.toLowerCase()}
                       </span>
-                      <span className="text-xs">
+                      <span className="text-xs text-neutral-500">
                         {formatDate(doc.updatedAt)}
                       </span>
                     </div>
