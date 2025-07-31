@@ -75,6 +75,18 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed, onToggl
     }
   }, [messages]);
 
+  // Auto-scroll when sidebar expands
+  useEffect(() => {
+    if (!isCollapsed && scrollAreaRef.current) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [isCollapsed]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;

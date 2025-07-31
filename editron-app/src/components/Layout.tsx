@@ -125,12 +125,15 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
       const fetchedProjects = await apiClient.getProjects() as Project[];
       setProjects(fetchedProjects);
 
+      // Check if we're on a non-project page (like settings)
+      const isOnProjectPage = location.pathname.includes('/project/') || location.pathname.includes('/editor/');
+      
       // Set active project based on URL
       if (projectUuid && fetchedProjects.some(p => p.uuid === projectUuid)) {
         setActiveProjectId(projectUuid);
-      } else if (fetchedProjects.length > 0 && !activeProjectId) {
+      } else if (fetchedProjects.length > 0 && !activeProjectId && isOnProjectPage) {
         setActiveProjectId(fetchedProjects[0].uuid);
-      } else if (fetchedProjects.length === 0) {
+      } else if (fetchedProjects.length === 0 || !isOnProjectPage) {
         setActiveProjectId(null);
       }
     } catch (error) {
@@ -140,7 +143,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
     } finally {
       setIsLoading(false);
     }
-  }, [activeProjectId, projectUuid]);
+  }, [activeProjectId, projectUuid, location.pathname]);
 
   useEffect(() => {
     fetchProjects();
@@ -270,7 +273,11 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
               onClick={() => navigate('/settings')}
               variant="ghost"
               size="sm"
-              className="w-full h-12 rounded-none border-0 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+              className={`w-full h-12 rounded-none border-0 transition-all duration-200 ${
+                location.pathname === '/settings'
+                  ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm'
+                  : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
+              }`}
             >
               <Settings className="w-5 h-5" />
               {!isLeftSidebarCollapsed && <span className="truncate ml-3">Settings</span>}

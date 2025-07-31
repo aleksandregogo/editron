@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Paperclip, Send, X } from 'lucide-react';
 import { apiClient } from '../../utils/api';
 import { useToast } from '../../hooks/use-toast';
-import ContactSearch from './ContactSearch';
 
 interface ComposeEmailModalProps {
   isOpen: boolean;
@@ -18,10 +17,44 @@ interface ComposeEmailModalProps {
 
 const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: ComposeEmailModalProps) => {
   const [recipients, setRecipients] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleEmailInputChange = (value: string) => {
+    setEmailInput(value);
+  };
+
+  const handleEmailInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && emailInput.trim()) {
+      e.preventDefault();
+      addEmail(emailInput.trim());
+    }
+  };
+
+  const handleEmailInputBlur = () => {
+    if (emailInput.trim() && validateEmail(emailInput.trim())) {
+      addEmail(emailInput.trim());
+    }
+  };
+
+  const addEmail = (email: string) => {
+    if (validateEmail(email) && !recipients.includes(email)) {
+      setRecipients([...recipients, email]);
+      setEmailInput('');
+    }
+  };
+
+  const removeEmail = (emailToRemove: string) => {
+    setRecipients(recipients.filter(email => email !== emailToRemove));
+  };
 
   const handleSendEmail = async () => {
     if (recipients.length === 0 || !subject || !body) {
@@ -49,6 +82,7 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
 
       // Reset form and close modal
       setRecipients([]);
+      setEmailInput('');
       setSubject('');
       setBody('');
       onClose();
@@ -62,10 +96,6 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSelectContacts = (emails: string[]) => {
-    setRecipients(emails);
   };
 
   return (
@@ -84,21 +114,23 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
             <label htmlFor="recipients" className="text-sm font-medium text-neutral-700">
               To:
             </label>
-            <ContactSearch onSelectContact={handleSelectContacts} selectedEmails={recipients}>
-              <Input
-                id="recipients"
-                type="text"
-                placeholder="Enter email addresses or search contacts..."
-                className="input-modern cursor-text"
-              />
-            </ContactSearch>
+            <Input
+              id="recipients"
+              type="text"
+              placeholder="Enter email addresses..."
+              value={emailInput}
+              onChange={(e) => handleEmailInputChange(e.target.value)}
+              onKeyDown={handleEmailInputKeyDown}
+              onBlur={handleEmailInputBlur}
+              className="input-modern"
+            />
             {recipients.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {recipients.map((email) => (
                   <Badge key={email} variant="secondary" className="flex items-center gap-1">
                     {email}
                     <button
-                      onClick={() => setRecipients(recipients.filter(e => e !== email))}
+                      onClick={() => removeEmail(email)}
                       className="ml-1 hover:bg-neutral-300/20 rounded-full p-0.5"
                     >
                       <X className="h-3 w-3" />
