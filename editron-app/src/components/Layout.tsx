@@ -236,7 +236,7 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
                 {projects.map((project) => (
                   <button
                     key={project.uuid}
-                    className={`flex items-center w-full px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg ${activeProjectId === project.uuid
+                    className={`flex items-center w-full py-2.5 text-sm font-medium transition-all duration-200 rounded-lg ${isLeftSidebarCollapsed ? 'px-2 justify-center' : 'px-3'} ${activeProjectId === project.uuid
                         ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm'
                         : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                       }`}
