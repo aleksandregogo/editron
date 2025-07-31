@@ -1,9 +1,12 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../entities/user.entity';
+import { Document } from '../entities/document.entity';
+import { UserFile } from '../entities/user-file.entity';
 import { EncryptionService } from '../common/utils/encryption.service';
+import { StorageService } from '../storage/storage.service';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
@@ -19,18 +22,23 @@ export class GoogleApiService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Document)
+    private readonly documentRepository: Repository<Document>,
+    @InjectRepository(UserFile)
+    private readonly userFileRepository: Repository<UserFile>,
     private readonly encryptionService: EncryptionService,
     private readonly configService: ConfigService,
-  ) {}
+    private readonly storageService: StorageService,
+  ) { }
 
   generateAuthUrl(userId: number): { authUrl: string; codeVerifier: string } {
     // Generate PKCE code verifier and challenge
     const codeVerifier = this.generateCodeVerifier();
     const codeChallenge = this.generateCodeChallenge(codeVerifier);
-    
+
     const redirectUri = 'http://localhost:8080/auth/google-api-callback';
     const scope = 'https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/contacts.readonly';
-    
+
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${encodeURIComponent(this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'))}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -107,7 +115,7 @@ export class GoogleApiService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      
+
       console.error('Error exchanging Google API code for tokens:', error);
       throw new InternalServerErrorException('Failed to exchange code for tokens');
     }
@@ -140,5 +148,160 @@ export class GoogleApiService {
       console.error('Error disconnecting Gmail API:', error);
       throw new InternalServerErrorException('Failed to disconnect Gmail API');
     }
+  }
+
+  private async getAuthenticatedClient(userId: number) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user || !user.googleRefreshToken) {
+      throw new BadRequestException('Google API not connected');
+    }
+
+    // Check if token is expired and refresh if needed
+    if (user.googleTokenExpiry && new Date() > user.googleTokenExpiry) {
+      await this.refreshAccessToken(userId);
+    }
+
+    const accessToken = this.encryptionService.decrypt(user.googleAccessToken);
+    return axios.create({
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  }
+
+  private async refreshAccessToken(userId: number) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user?.googleRefreshToken) {
+      throw new BadRequestException('No refresh token available');
+    }
+
+    const refreshToken = this.encryptionService.decrypt(user.googleRefreshToken);
+
+    const response = await axios.post<GoogleTokenResponse>('https://oauth2.googleapis.com/token', {
+      client_id: this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
+      client_secret: this.configService.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    });
+
+    const { access_token, expires_in } = response.data;
+    const expiryDate = new Date();
+    expiryDate.setSeconds(expiryDate.getSeconds() + expires_in);
+
+    await this.userRepository.update(userId, {
+      googleAccessToken: this.encryptionService.encrypt(access_token),
+      googleTokenExpiry: expiryDate,
+    });
+  }
+
+  async searchContacts(userId: number, query: string): Promise<Array<{ name: string; email: string }>> {
+    try {
+      const client = await this.getAuthenticatedClient(userId);
+
+      const response = await client.get('https://people.googleapis.com/v1/people:searchContacts', {
+        params: {
+          query,
+          pageSize: 20,
+          readMask: 'names,emailAddresses',
+        },
+      });
+
+      const contacts = response.data.results || [];
+      return contacts
+        .filter((result: any) => result.person?.emailAddresses?.length > 0)
+        .map((result: any) => {
+          const person = result.person;
+          const name = person.names?.[0]?.displayName || 'Unknown';
+          const email = person.emailAddresses?.[0]?.value;
+          return { name, email };
+        });
+    } catch (error) {
+      console.error('Error searching contacts:', error);
+      throw new InternalServerErrorException('Failed to search contacts');
+    }
+  }
+
+  async sendEmail(
+    userId: number,
+    to: string,
+    subject: string,
+    body: string,
+    documentUuid: string,
+  ): Promise<{ success: boolean; messageId: string }> {
+    try {
+      // Fetch the document and verify ownership
+      const document = await this.documentRepository.findOne({
+        where: { uuid: documentUuid, user: { id: userId } },
+        relations: ['sourceFile'],
+      });
+
+      if (!document) {
+        throw new NotFoundException('Document not found or access denied');
+      }
+
+      if (!document.sourceFile) {
+        throw new BadRequestException('Document has no source file to attach');
+      }
+
+      // Download the file from storage
+      const fileBuffer = await this.storageService.downloadFile(
+        document.sourceFile.storageBucket,
+        document.sourceFile.storageKey,
+      );
+
+      // Get authenticated client
+      const client = await this.getAuthenticatedClient(userId);
+
+      // Construct the email message
+      const boundary = 'boundary_' + Math.random().toString(36).substring(2);
+      const emailContent = this.constructEmailMessage(to, subject, body, document.sourceFile, fileBuffer, boundary);
+
+      // Send the email
+      const response = await client.post('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+        raw: emailContent,
+      });
+
+      return {
+        success: true,
+        messageId: response.data.id,
+      };
+    } catch (error) {
+      console.error('Error sending email:', error);
+      throw new InternalServerErrorException('Failed to send email');
+    }
+  }
+
+  private constructEmailMessage(
+    to: string,
+    subject: string,
+    body: string,
+    sourceFile: UserFile,
+    fileBuffer: Buffer,
+    boundary: string,
+  ): string {
+    const emailLines = [
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
+      `Content-Type: text/plain; charset=UTF-8`,
+      '',
+      body,
+      '',
+      `--${boundary}`,
+      `Content-Type: ${sourceFile.mimeType}; name="${sourceFile.originalFileName}"`,
+      `Content-Disposition: attachment; filename="${sourceFile.originalFileName}"`,
+      `Content-Transfer-Encoding: base64`,
+      '',
+      fileBuffer.toString('base64'),
+      '',
+      `--${boundary}--`,
+    ];
+
+    const rawEmail = emailLines.join('\r\n');
+    return Buffer.from(rawEmail).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 } 

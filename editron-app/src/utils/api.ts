@@ -252,6 +252,18 @@ class ApiClient {
       throw error;
     }
   }
+
+  // Google API methods
+  async searchGoogleContacts(query: string) {
+    return this.request(`/api/v1/google-api/contacts/search?q=${encodeURIComponent(query)}`);
+  }
+
+  async sendEmail(data: { to: string; subject: string; body: string; documentUuid: string }) {
+    return this.request('/api/v1/google-api/send-email', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const apiClient = new ApiClient(); 

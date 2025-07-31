@@ -1,7 +1,8 @@
-import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Get, Delete } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Get, Delete, Query } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { GoogleApiService } from './google-api.service';
 import { ExchangeGoogleApiCodeDto } from './dto/exchange-google-api-code.dto';
+import { SendEmailDto } from './dto/send-email.dto';
 import { AuthUser } from '../auth/decorators/auth-user.decorator';
 import { UserInfo } from '../auth/interfaces/user-info.interface';
 
@@ -36,5 +37,31 @@ export class GoogleApiController {
   @HttpCode(HttpStatus.OK)
   async disconnect(@AuthUser() userInfo: UserInfo) {
     return this.googleApiService.disconnect(userInfo.user.id);
+  }
+
+  @Get('contacts/search')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async searchContacts(
+    @Query('q') query: string,
+    @AuthUser() userInfo: UserInfo,
+  ) {
+    return this.googleApiService.searchContacts(userInfo.user.id, query);
+  }
+
+  @Post('send-email')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async sendEmail(
+    @Body() sendEmailDto: SendEmailDto,
+    @AuthUser() userInfo: UserInfo,
+  ) {
+    return this.googleApiService.sendEmail(
+      userInfo.user.id,
+      sendEmailDto.to,
+      sendEmailDto.subject,
+      sendEmailDto.body,
+      sendEmailDto.documentUuid,
+    );
   }
 } 

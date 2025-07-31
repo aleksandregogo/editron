@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock } from 'lucide-react';
+import { ArrowLeft, Clock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import TiptapEditor from './TiptapEditor';
 import { AgentReviewModal } from './Diff/AgentReviewModal';
+import ComposeEmailModal from './Email/ComposeEmailModal';
 import { apiClient } from '../utils/api';
 
 // Global state for agent request function
@@ -37,6 +38,15 @@ interface Document {
   createdAt: string;
 }
 
+interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  profilePicture?: string;
+  authProvider: string;
+  isGoogleApiConnected?: boolean;
+}
+
 const EditorPage = () => {
   const { uuid, projectUuid } = useParams<{ uuid: string; projectUuid?: string }>();
   const navigate = useNavigate();
@@ -45,17 +55,32 @@ const EditorPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   
   // Agent Review Modal state
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
   const [isAgentLoading, setIsAgentLoading] = useState(false);
   const [agentDiffHtml, setAgentDiffHtml] = useState<string | null>(null);
 
+  // Email Modal state
+  const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
+
   useEffect(() => {
     if (uuid) {
       fetchDocument();
+      fetchUserProfile();
     }
   }, [uuid]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const profile = await invoke<UserProfile>('get_profile');
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const fetchDocument = async () => {
     try {
@@ -265,6 +290,17 @@ const EditorPage = () => {
           </div>
           
           <div className="flex items-center gap-3">
+            {userProfile?.isGoogleApiConnected && (
+              <Button
+                onClick={() => setIsComposeModalOpen(true)}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                Send Email
+              </Button>
+            )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               {isSaving ? (
                 <>
@@ -298,6 +334,14 @@ const EditorPage = () => {
         diffHtml={agentDiffHtml}
         onConfirm={handleAgentConfirm}
         onClose={handleAgentClose}
+      />
+
+      {/* Compose Email Modal */}
+      <ComposeEmailModal
+        isOpen={isComposeModalOpen}
+        onClose={() => setIsComposeModalOpen(false)}
+        documentTitle={document.title}
+        documentUuid={document.uuid}
       />
     </div>
   );
