@@ -5,22 +5,22 @@ const features = [
   {
     icon: FolderOpen,
     title: "Project Workspaces",
-    description: "Your Work, Perfectly Organized. Organize your work into projects with custom instructions to give the AI true context.",
+    description: "Organize your work into focused projects with custom AI instructions. Give the assistant full context—once, not over and over.",
   },
   {
     icon: Bot,
     title: "AI Agent Mode",
-    description: "An AI Co-Editor at Your Command. Our AI reads the whole document, not just snippets, for smarter, more consistent edits.",
+    description: "Let AI act as your co-editor. It reads your entire document—not just snippets—for accurate, consistent changes.",
   },
   {
     icon: Eye,
     title: "Agent Review Mode",
-    description: "Full Control, Perfect Results. Never lose formatting again. Editron is built to respect the integrity of your DOCX files.",
+    description: "Full visibility before you commit. Preview clean diffs and keep complete control over structure and formatting.",
   },
   {
     icon: Mail,
     title: "Gmail Integration",
-    description: "Connect Your Workflow. Your documents are processed securely, combining desktop privacy with cloud-powered intelligence.",
+    description: "Bring email into your workflow. Draft and edit documents while staying connected—all with local privacy and cloud intelligence.",
   },
 ]
 

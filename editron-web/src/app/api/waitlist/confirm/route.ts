@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/v1/waitlist/confirm?token=${token}`, {
+    const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/waitlist/confirm?token=${token}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

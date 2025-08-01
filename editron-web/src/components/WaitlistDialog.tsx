@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -29,7 +29,7 @@ interface WaitlistDialogProps {
 declare global {
   interface Window {
     turnstile: {
-      render: (container: string, options: any) => string
+      render: (container: HTMLElement, options: any) => string
       reset: (widgetId: string) => void
     }
   }
@@ -38,9 +38,12 @@ declare global {
 export function WaitlistDialog({ children }: WaitlistDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState<string>("")
-  const [widgetId, setWidgetId] = useState<string>("")
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [turnstileLoaded, setTurnstileLoaded] = useState(false)
+  const turnstileWidgetId = useRef<string | null>(null)
+  const turnstileContainerRef = useRef<HTMLDivElement>(null)
 
   const {
     register,
@@ -52,41 +55,108 @@ export function WaitlistDialog({ children }: WaitlistDialogProps) {
   })
 
   useEffect(() => {
-    // Load Cloudflare Turnstile script
-    const script = document.createElement("script")
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js"
-    script.async = true
-    script.defer = true
-    document.head.appendChild(script)
-
-    return () => {
-      document.head.removeChild(script)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (isOpen && window.turnstile) {
-      const container = document.getElementById("turnstile-widget")
-      if (container) {
-        const id = window.turnstile.render(container, {
-          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA",
-          callback: (token: string) => {
-            setTurnstileToken(token)
-          },
-        })
-        setWidgetId(id)
+    console.log('Dialog opened, isOpen:', isOpen)
+    
+    // Load Turnstile script if not already loaded
+    if (!document.querySelector('script[src*="turnstile"]')) {
+      console.log('Loading Turnstile script...')
+      const script = document.createElement("script")
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js"
+      script.async = true
+      script.defer = true
+      script.onload = () => {
+        console.log('Turnstile script loaded successfully')
+        setTurnstileLoaded(true)
+        // Script loaded, render widget if dialog is open
+        if (isOpen && turnstileContainerRef.current) {
+          setTimeout(() => renderTurnstile(), 100) // Small delay to ensure script is ready
+        }
+      }
+      script.onerror = () => {
+        console.error('Failed to load Turnstile script')
+        setError('Failed to load security check')
+      }
+      document.head.appendChild(script)
+    } else {
+      console.log('Turnstile script already exists')
+      setTurnstileLoaded(true)
+      console.log('Checking conditions:', { isOpen, containerExists: !!turnstileContainerRef.current })
+      if (isOpen && turnstileContainerRef.current) {
+        console.log('Script exists and dialog is open, calling renderTurnstile')
+        setTimeout(() => renderTurnstile(), 100)
+      } else if (isOpen) {
+        console.log('Dialog is open but container not ready, retrying in 200ms')
+        setTimeout(() => {
+          if (turnstileContainerRef.current) {
+            console.log('Container now ready, calling renderTurnstile')
+            renderTurnstile()
+          }
+        }, 200)
+      } else {
+        console.log('Conditions not met - isOpen:', isOpen, 'container:', !!turnstileContainerRef.current)
       }
     }
   }, [isOpen])
 
+  const renderTurnstile = () => {
+    console.log('renderTurnstile called', { 
+      turnstileExists: typeof window.turnstile !== 'undefined',
+      containerExists: !!turnstileContainerRef.current,
+      siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA",
+      windowTurnstile: window.turnstile
+    })
+    
+    if (typeof window.turnstile !== 'undefined' && turnstileContainerRef.current) {
+      if (turnstileWidgetId.current) {
+        window.turnstile.reset(turnstileWidgetId.current)
+      }
+      
+      // Clear container first
+      turnstileContainerRef.current.innerHTML = ''
+      
+      const widgetId = window.turnstile.render(turnstileContainerRef.current, {
+        sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA",
+        callback: (token: string) => {
+          console.log('Turnstile callback triggered', token)
+          setTurnstileToken(token)
+          setError("")
+        },
+        'expired-callback': () => {
+          console.log('Turnstile expired')
+          setTurnstileToken(null)
+          if (turnstileWidgetId.current) window.turnstile.reset(turnstileWidgetId.current)
+        },
+        'error-callback': () => {
+          console.log('Turnstile error')
+          setTurnstileToken(null)
+          setError('CAPTCHA failed to load. Please try again.')
+          if (turnstileWidgetId.current) window.turnstile.reset(turnstileWidgetId.current)
+        },
+        theme: 'auto',
+      })
+      turnstileWidgetId.current = widgetId || null
+      console.log('Turnstile widget ID:', widgetId)
+    }
+  }
+
+  const resetForm = () => {
+    reset()
+    setTurnstileToken(null)
+    setError("")
+    setSuccess("")
+    if (turnstileWidgetId.current && typeof window.turnstile !== 'undefined') {
+      window.turnstile.reset(turnstileWidgetId.current)
+    }
+  }
+
   const onSubmit = async (data: FormData) => {
     if (!turnstileToken) {
-      setMessage({ type: "error", text: "Please complete the security check" })
+      setError("Please complete the CAPTCHA verification.")
       return
     }
 
     setIsSubmitting(true)
-    setMessage(null)
+    setError("")
 
     try {
       const response = await fetch("/api/waitlist/join", {
@@ -103,19 +173,23 @@ export function WaitlistDialog({ children }: WaitlistDialogProps) {
       const result = await response.json()
 
       if (response.ok) {
-        setMessage({ type: "success", text: result.message })
-        reset()
-        if (widgetId) {
-          window.turnstile.reset(widgetId)
-        }
-        setTurnstileToken("")
-        // Close dialog after 2 seconds on success
-        setTimeout(() => setIsOpen(false), 2000)
+        setError("")
+        setSuccess(result.message || "Successfully joined waitlist!")
+        resetForm()
+        setTimeout(() => setIsOpen(false), 3000)
       } else {
-        setMessage({ type: "error", text: result.message || "Something went wrong" })
+        setError(result.message || "Something went wrong")
+        if (turnstileWidgetId.current && typeof window.turnstile !== 'undefined') {
+          window.turnstile.reset(turnstileWidgetId.current)
+        }
+        setTurnstileToken(null)
       }
     } catch (error) {
-      setMessage({ type: "error", text: "Network error. Please try again." })
+      setError("Network error. Please try again.")
+      if (turnstileWidgetId.current && typeof window.turnstile !== 'undefined') {
+        window.turnstile.reset(turnstileWidgetId.current)
+      }
+      setTurnstileToken(null)
     } finally {
       setIsSubmitting(false)
     }
@@ -124,12 +198,7 @@ export function WaitlistDialog({ children }: WaitlistDialogProps) {
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)
     if (!open) {
-      reset()
-      setMessage(null)
-      setTurnstileToken("")
-      if (widgetId) {
-        window.turnstile.reset(widgetId)
-      }
+      resetForm()
     }
   }
 
@@ -162,28 +231,32 @@ export function WaitlistDialog({ children }: WaitlistDialogProps) {
 
           <div className="space-y-2">
             <Label>Security check</Label>
-            <div id="turnstile-widget" className="flex justify-center"></div>
+            <div ref={turnstileContainerRef} className="flex h-full w-full">
+              {!turnstileLoaded && (
+                <div className="text-sm text-gray-500">Loading security check...</div>
+              )}
+            </div>
           </div>
 
-          {message && (
-            <div
-              className={`p-3 rounded-md text-sm ${
-                message.type === "success"
-                  ? "bg-green-50 text-green-700 border border-green-200"
-                  : "bg-red-50 text-red-700 border border-red-200"
-              }`}
-            >
-              {message.text}
+          {error && (
+            <div className="p-3 rounded-md text-sm bg-red-50 text-red-700 border border-red-200">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="p-3 rounded-md text-sm bg-green-50 text-green-700 border border-green-200">
+              {success}
             </div>
           )}
 
           <Button
             type="submit"
-            className="w-full"
-            disabled={isSubmitting}
+            className="w-full cursor-pointer"
+            disabled={isSubmitting || !turnstileToken || !!success}
             variant="gradient"
           >
-            {isSubmitting ? "Joining..." : "Join Waitlist"}
+            {isSubmitting ? "Joining..." : success ? "Success!" : "Join Waitlist"}
           </Button>
         </form>
       </DialogContent>

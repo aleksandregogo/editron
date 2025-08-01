@@ -19,19 +19,17 @@ export function HeroSection() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
             The Document Workspace That{" "}
             <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Thinks With You
+              Works With You
             </span>
           </h1>
           
           <p className="text-xl sm:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Editron is a secure, project-based desktop application that uses AI to help you draft, 
-            edit, and manage complex documents faster than ever before. Stop wrestling with formatting 
-            and repetitive tasks, and start focusing on what matters.
+            Editron is a secure, project-based desktop app that uses AI to help you draft, edit, and manage complex documents without losing structure or wasting time. Focus on the work, not the formatting.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up delay-300">
             <WaitlistDialog>
-              <Button size="lg" variant="gradient" className="text-lg px-8 py-3">
+              <Button size="lg" variant="gradient" className="text-lg px-8 py-3 cursor-pointer">
                 Join the Waitlist
               </Button>
             </WaitlistDialog>
@@ -39,7 +37,7 @@ export function HeroSection() {
             <Button 
               size="lg" 
               variant="outline" 
-              className="text-lg px-8 py-3 border-white/20 text-white hover:bg-white/10"
+              className="text-lg px-8 py-3 border-white text-white hover:bg-white/10 hover:text-white bg-transparent cursor-pointer"
               onClick={() => alert("Demo video coming soon!")}
             >
               <Play className="mr-2 h-5 w-5" />
@@ -47,25 +45,9 @@ export function HeroSection() {
             </Button>
           </div>
         </div>
-
-        {/* Floating product mockup */}
-        <div className="absolute top-1/2 right-0 transform translate-x-1/2 -translate-y-1/2 hidden lg:block animate-float">
-          <div className="w-80 h-96 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 shadow-2xl">
-            <div className="p-4">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-4 bg-white/20 rounded animate-pulse"></div>
-                <div className="h-4 bg-white/20 rounded w-3/4 animate-pulse delay-100"></div>
-                <div className="h-4 bg-white/20 rounded w-1/2 animate-pulse delay-200"></div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
+
+
     </section>
   )
 } 

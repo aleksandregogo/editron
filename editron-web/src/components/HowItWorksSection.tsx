@@ -16,6 +16,11 @@ const steps = [
     title: "Review & Accept",
     description: "See exactly what will change with a clear diff view. Accept, modify, or reject changes.",
   },
+  {
+    number: "4",
+    title: "Send with Gmail",
+    description: "Once ready, send your document directly via Gmail—without leaving Editron.",
+  },
 ]
 
 export function HowItWorksSection() {
@@ -32,7 +37,7 @@ export function HowItWorksSection() {
         </div>
 
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {steps.map((step, index) => (
               <div key={index} className="relative">
                 <div className="text-center">

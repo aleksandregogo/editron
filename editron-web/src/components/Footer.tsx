@@ -11,7 +11,7 @@ export function Footer() {
           <div className="md:col-span-2">
             <h3 className="text-2xl font-bold mb-4">Editron</h3>
             <p className="text-gray-400 mb-6 max-w-md">
-              The document workspace that thinks with you. Built for professionals who demand both power and precision.
+              The document workspace that works with you. Built for professionals who demand both power and precision.
             </p>
             <WaitlistDialog>
               <Button variant="gradient" size="lg">
@@ -21,7 +21,7 @@ export function Footer() {
           </div>
 
           {/* Links */}
-          <div>
+          {/* <div>
             <h4 className="text-lg font-semibold mb-4">Product</h4>
             <ul className="space-y-2 text-gray-400">
               <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
@@ -29,9 +29,9 @@ export function Footer() {
               <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
               <li><a href="#" className="hover:text-white transition-colors">API</a></li>
             </ul>
-          </div>
+          </div> */}
 
-          <div>
+          {/* <div>
             <h4 className="text-lg font-semibold mb-4">Company</h4>
             <ul className="space-y-2 text-gray-400">
               <li><a href="#" className="hover:text-white transition-colors">About</a></li>
@@ -39,13 +39,13 @@ export function Footer() {
               <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
             </ul>
-          </div>
+          </div> */}
         </div>
 
         {/* Bottom section */}
-        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+        {/* <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <div className="text-gray-400 text-sm mb-4 md:mb-0">
-            © 2024 Editron. All rights reserved.
+            © 2025 Editron. All rights reserved.
           </div>
           
           <div className="flex items-center space-x-6">
@@ -59,7 +59,7 @@ export function Footer() {
               <Linkedin className="w-5 h-5" />
             </a>
           </div>
-        </div>
+        </div> */}
       </div>
     </footer>
   )
