@@ -42,8 +42,6 @@ pub fn run() {
                 log::error!("Failed to load server tokens: {}", e);
             }
 
-            // OAuth callback is now handled via localhost HTTP server in auth.rs
-
             log::info!("Application setup completed");
             Ok(())
         })

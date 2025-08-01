@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Mutex;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_store::StoreExt;
 use tauri_plugin_opener::OpenerExt;
 use warp::Filter;
@@ -777,16 +777,14 @@ async fn start_oauth_callback_server(app_handle: AppHandle, port: u16) -> Result
     *shutdown_tx.lock().unwrap() = Some(shutdown_tx_main);
     
     // Start the server with graceful shutdown
-    let (addr, server) = warp::serve(routes)
+    let (_, server) = warp::serve(routes)
         .bind_with_graceful_shutdown(([127, 0, 0, 1], port), async {
             shutdown_rx.await.ok();
             log::info!("OAuth callback server shutting down");
         });
     
     // Spawn the server in a separate task
-    let server_handle = tokio::spawn(server);
-    
-    log::info!("OAuth callback server started on http://localhost:{}", addr.port());
+    let _server_handle = tokio::spawn(server);
     
     // Update the redirect URI to use the actual port
     tokio::select! {
@@ -1319,15 +1317,13 @@ async fn start_gmail_oauth_callback_server(app_handle: AppHandle, port: u16) -> 
     let (shutdown_tx_main, shutdown_rx) = oneshot::channel::<()>();
     *shutdown_tx.lock().unwrap() = Some(shutdown_tx_main);
     
-    let (addr, server) = warp::serve(routes)
+    let (_, server) = warp::serve(routes)
         .bind_with_graceful_shutdown(([127, 0, 0, 1], port), async {
             shutdown_rx.await.ok();
             log::info!("Gmail API OAuth callback server shutting down");
         });
     
-    let server_handle = tokio::spawn(server);
-    
-    log::info!("Gmail API OAuth callback server started on http://localhost:{}", addr.port());
+    let _server_handle = tokio::spawn(server);
     
     tokio::select! {
         result = rx => {

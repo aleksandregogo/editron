@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::env;
+use dotenv::dotenv;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -64,6 +65,9 @@ impl Default for ServerConfig {
 impl AppConfig {
     /// Load configuration from environment variables with fallback to defaults
     pub fn load() -> Self {
+        // Load .env file if it exists
+        dotenv().ok();
+        
         let mut config = Self::default();
 
         // Backend configuration

@@ -1,6 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
 
-const API_BASE_URL = 'http://localhost:5000';
+const getApiBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // Fallback to default
+  return 'http://localhost:5000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiClient {
   private baseUrl: string;
