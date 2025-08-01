@@ -11,12 +11,14 @@ import { ChatHistoryModule } from './chat-history/chat-history.module';
 import { RedisModule } from './redis/redis.module';
 import { ProjectModule } from './project/project.module';
 import { GoogleApiModule } from './google-api/google-api.module';
+import { WaitlistModule } from './waitlist/waitlist.module';
 import { User } from './entities/user.entity';
 import { Document } from './entities/document.entity';
 import { UserFile } from './entities/user-file.entity';
 import { KnowledgeItem } from './entities/knowledge-item.entity';
 import { ChatMessage } from './entities/chat-message.entity';
 import { Project } from './entities/project.entity';
+import { WaitlistEntry } from './entities/waitlist-entry.entity';
 
 @Module({
   imports: [
@@ -32,7 +34,7 @@ import { Project } from './entities/project.entity';
         username: configService.get('DB_USERNAME') || 'postgres',
         password: configService.get('DB_PASSWORD') || 'password',
         database: configService.get('DB_NAME') || 'editron',
-        entities: [User, Document, UserFile, KnowledgeItem, ChatMessage, Project],
+        entities: [User, Document, UserFile, KnowledgeItem, ChatMessage, Project, WaitlistEntry],
         synchronize: process.env.NODE_ENV !== 'production',
         logging: process.env.NODE_ENV === 'development',
       }),
@@ -40,6 +42,7 @@ import { Project } from './entities/project.entity';
     }),
     AuthModule,
     UserModule,
+    WaitlistModule,
 
     AiGatewayModule,
     IndexingModule,

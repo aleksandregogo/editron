@@ -9,5 +9,9 @@
 /editron-gateway/node_modules
 /editron-gateway/dist
 /editron-app/.vscode
+/editron-web/node_modules
+/editron-web/dist
+/editron-web/build
+/editron-web/.vscode
 /source.txt
 /source.sh
