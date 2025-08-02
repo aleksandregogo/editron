@@ -163,7 +163,7 @@ const ComposeEmailModal = ({ isOpen, onClose, documentTitle, documentUuid }: Com
             <div className="flex items-center space-x-2 p-3 border border-neutral-200 rounded-lg bg-neutral-50">
               <Paperclip className="h-4 w-4 text-neutral-500" />
               <Badge variant="secondary" className="text-xs">
-                {documentTitle}
+                {documentTitle}.pdf
               </Badge>
             </div>
           </div>

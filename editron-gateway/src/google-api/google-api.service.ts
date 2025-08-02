@@ -1,12 +1,11 @@
-import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../entities/user.entity';
 import { Document } from '../entities/document.entity';
-import { UserFile } from '../entities/user-file.entity';
 import { EncryptionService } from '../common/utils/encryption.service';
-import { StorageService } from '../storage/storage.service';
+import { PdfGenerationService } from '../common/services/pdf-generation.service';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
@@ -19,16 +18,16 @@ interface GoogleTokenResponse {
 
 @Injectable()
 export class GoogleApiService {
+  private readonly logger = new Logger(GoogleApiService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Document)
     private readonly documentRepository: Repository<Document>,
-    @InjectRepository(UserFile)
-    private readonly userFileRepository: Repository<UserFile>,
     private readonly encryptionService: EncryptionService,
     private readonly configService: ConfigService,
-    private readonly storageService: StorageService,
+    private readonly pdfGenerationService: PdfGenerationService,
   ) { }
 
   generateAuthUrl(userId: number): { authUrl: string; codeVerifier: string } {
@@ -230,44 +229,39 @@ export class GoogleApiService {
     documentUuid: string,
   ): Promise<{ success: boolean; messageId: string }> {
     try {
-      // Fetch the document and verify ownership
+      // Fetch the document to get its LATEST HTML content and title
       const document = await this.documentRepository.findOne({
         where: { uuid: documentUuid, user: { id: userId } },
-        relations: ['sourceFile'],
       });
 
       if (!document) {
-        throw new NotFoundException('Document not found or access denied');
+        throw new NotFoundException('Document not found or access denied.');
       }
 
-      if (!document.sourceFile) {
-        throw new BadRequestException('Document has no source file to attach');
-      }
+      // Generate the PDF from the document's HTML content
+      this.logger.log(`Generating PDF for document: ${document.title}`);
+      const pdfBuffer = await this.pdfGenerationService.generatePdfFromHtml(document.content);
 
-      // Download the file from storage
-      const fileBuffer = await this.storageService.downloadFile(
-        document.sourceFile.storageBucket,
-        document.sourceFile.storageKey,
-      );
-
-      // Get authenticated client
+      // Get an authenticated Google API client
       const client = await this.getAuthenticatedClient(userId);
 
-      // Construct the email message
-      const boundary = 'boundary_' + Math.random().toString(36).substring(2);
-      const emailContent = this.constructEmailMessage(to, subject, body, document.sourceFile, fileBuffer, boundary);
+      // Construct the email message with the PDF attachment
+      const fileName = `${document.title}.pdf`;
+      const mimeType = 'application/pdf';
+      const emailContent = this.constructEmailMessage(to, subject, body, fileName, mimeType, pdfBuffer);
 
       // Send the email
       const response = await client.post('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
         raw: emailContent,
       });
 
+      this.logger.log(`Email sent successfully with message ID: ${response.data.id}`);
       return {
         success: true,
         messageId: response.data.id,
       };
     } catch (error) {
-      console.error('Error sending email:', error);
+      this.logger.error('Error sending email:', error);
       throw new InternalServerErrorException('Failed to send email');
     }
   }
@@ -276,10 +270,11 @@ export class GoogleApiService {
     to: string,
     subject: string,
     body: string,
-    sourceFile: UserFile,
-    fileBuffer: Buffer,
-    boundary: string,
+    attachmentFileName: string,
+    attachmentMimeType: string,
+    attachmentBuffer: Buffer,
   ): string {
+    const boundary = `boundary_${Math.random().toString(36).substring(2)}`;
     const emailLines = [
       `To: ${to}`,
       `Subject: ${subject}`,
@@ -287,21 +282,21 @@ export class GoogleApiService {
       `Content-Type: multipart/mixed; boundary="${boundary}"`,
       '',
       `--${boundary}`,
-      `Content-Type: text/plain; charset=UTF-8`,
+      `Content-Type: text/html; charset=UTF-8`,
       '',
-      body,
+      body.replace(/\n/g, '<br>'),
       '',
       `--${boundary}`,
-      `Content-Type: ${sourceFile.mimeType}; name="${sourceFile.originalFileName}"`,
-      `Content-Disposition: attachment; filename="${sourceFile.originalFileName}"`,
+      `Content-Type: ${attachmentMimeType}; name="${attachmentFileName}"`,
+      `Content-Disposition: attachment; filename="${attachmentFileName}"`,
       `Content-Transfer-Encoding: base64`,
       '',
-      fileBuffer.toString('base64'),
+      attachmentBuffer.toString('base64'),
       '',
       `--${boundary}--`,
     ];
 
     const rawEmail = emailLines.join('\r\n');
-    return Buffer.from(rawEmail).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return Buffer.from(rawEmail).toString('base64url');
   }
 } 

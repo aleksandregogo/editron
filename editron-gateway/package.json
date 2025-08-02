@@ -45,6 +45,7 @@
     "mammoth": "^1.8.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "pdfmake": "^0.2.7",
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
