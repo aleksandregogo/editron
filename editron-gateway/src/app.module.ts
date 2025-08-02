@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-
+import * as fs from 'fs';
 import { AiGatewayModule } from './ai-gateway/ai-gateway.module';
 import { IndexingModule } from './indexing/indexing.module';
 import { ChatModule } from './chat/chat.module';
@@ -37,6 +37,9 @@ import { WaitlistEntry } from './entities/waitlist-entry.entity';
         entities: [User, Document, UserFile, KnowledgeItem, ChatMessage, Project, WaitlistEntry],
         synchronize: process.env.NODE_ENV !== 'production',
         logging: process.env.NODE_ENV === 'development',
+        ssl: configService.get('DB_CERT') !== undefined ? {
+          ca: fs.readFileSync(configService.get<string>('DB_CERT') as string),
+        } : undefined,
       }),
       inject: [ConfigService],
     }),
