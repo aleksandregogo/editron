@@ -17,7 +17,7 @@ const downloads: DownloadInfo[] = [
     platform: "macOS",
     version: "0.1.0",
     size: "5.9MB",
-    url: "http://167.99.196.131/downloads/editron_0.1.0_aarch64.dmg",
+    url: "https://drive.google.com/file/d/1rlfXo2oaQ2ogsO-ahPuLP6TZZFs-olOO/view?usp=sharing",
     available: true
   },
   {

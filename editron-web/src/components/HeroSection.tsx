@@ -28,11 +28,11 @@ export function HeroSection() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up delay-300">
-            <WaitlistDialog>
+            {/* <WaitlistDialog>
               <Button size="lg" variant="gradient" className="text-lg px-8 py-3 cursor-pointer">
                 Join the Waitlist
               </Button>
-            </WaitlistDialog>
+            </WaitlistDialog> */}
             
             <Button 
               size="lg" 

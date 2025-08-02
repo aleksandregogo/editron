@@ -12,11 +12,11 @@ export function Footer() {
             <p className="text-gray-400 mb-6 max-w-md">
               The document workspace that works with you. Built for professionals who demand both power and precision.
             </p>
-            <WaitlistDialog>
+            {/* <WaitlistDialog>
               <Button variant="gradient" size="lg">
                 Join the Waitlist
               </Button>
-            </WaitlistDialog>
+            </WaitlistDialog> */}
           </div>
 
           {/* Links */}
