@@ -9,7 +9,7 @@ import { Document, DocumentStatus } from '../entities/document.entity';
 import { User } from '../entities/user.entity';
 import { UserFile } from '../entities/user-file.entity';
 import { KnowledgeItem } from '../entities/knowledge-item.entity';
-import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
+import { AiGatewayService, ChatModel } from '../ai-gateway/ai-gateway.service';
 import { generateFullDocumentAgentPrompt } from '../common/prompts/custom-prompts';
 import { diffWords } from 'diff';
 import { ChatHistoryService } from '../chat-history/chat-history.service';
@@ -306,8 +306,9 @@ export class ProjectService {
     // Save user message to chat history
     await this.chatHistoryService.addMessage(userId, ChatMessageRole.USER, promptText, undefined, ChatMessageMode.AGENT);
 
-    // 1. Fetch the document and apply guardrails
+    // 1. Fetch the document and project, apply guardrails
     const document = await this.findDocumentByProject(documentUuid, projectUuid, userId);
+    const project = await this.findByUuid(projectUuid, userId);
     const originalContent = document.content;
 
     // GUARDRAIL: Add a size limit check.
@@ -318,13 +319,13 @@ export class ProjectService {
     }
 
     // 2. Generate the prompt and call the LLM
-    const messages = generateFullDocumentAgentPrompt(originalContent, promptText);
+    const messages = generateFullDocumentAgentPrompt(originalContent, promptText, project.customInstructions);
     const aiMessages = messages.map(m => ({ role: m.role as any, content: m.content }));
 
     this.logger.log(`Calling Full Document Agent for doc ${documentUuid}...`);
     
     try {
-      const suggestedContent = await this.aiGatewayService.callChatCompletions(aiMessages);
+      const suggestedContent = await this.aiGatewayService.callChatCompletions(aiMessages, ChatModel.GPT4_MINI);
 
       if (!suggestedContent || !suggestedContent.trim().startsWith('<')) {
         this.logger.error(`Agent returned an invalid or empty response for doc ${documentUuid}.`);

@@ -1,13 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Observable } from 'rxjs';
-import { AiGatewayService, ChatMessage as AiChatMessage, ChatMessageRole as AiChatMessageRole } from '../ai-gateway/ai-gateway.service';
+import { AiGatewayService, ChatMessage as AiChatMessage, ChatMessageRole as AiChatMessageRole, ChatModel } from '../ai-gateway/ai-gateway.service';
 import { UserInfo } from '../auth/interfaces/user-info.interface';
 import { Document } from '../entities/document.entity';
 import { KnowledgeItem } from '../entities/knowledge-item.entity';
-import { generateRagChatCompletionPrompt, generateDocumentChatPrompt, generateDocumentAgentPrompt } from '../common/prompts/custom-prompts';
-import { ChatMode } from './dto/chat-query.dto';
+import { generateRagChatCompletionPrompt, generateDocumentChatPrompt } from '../common/prompts/custom-prompts';
 import { ChatHistoryService } from '../chat-history/chat-history.service';
 import { ProjectService } from '../project/project.service';
 
@@ -30,16 +29,15 @@ export class ChatService {
     promptText: string,
     documentUuid?: string,
     projectUuid?: string,
-    mode: ChatMode = ChatMode.CHAT,
+    model: ChatModel = ChatModel.GPT4_MINI, // Make model configurable
   ): Promise<Observable<string>> {
     const userId = user.userLocalId;
-    this.logger.log(`Processing query for user ${userId}, mode: ${documentUuid ? 'Editor' : projectUuid ? 'Project' : 'General'}`);
+    this.logger.log(`Processing query for user ${userId}, mode: ${documentUuid ? 'Editor' : projectUuid ? 'Project' : 'General'}, model: ${model}`);
 
     // RAG and Context Gathering
     const queryEmbeddings = await this.aiGatewayService.generateEmbeddings([promptText]);
     const queryVector = queryEmbeddings?.[0];
     let relevantChunks: string[] = [];
-    let documentContent: string | null = null;
 
     const k = 4; // Reduced from 8 to 4 chunks to save tokens
     let qb = this.knowledgeRepository.createQueryBuilder('item');
@@ -54,10 +52,7 @@ export class ChatService {
         throw new Error('Document not found or access denied.');
       }
       
-      // Get full document content for agent mode
-      if (mode === ChatMode.AGENT) {
-        documentContent = doc.content;
-      }
+
       
       // Vector search within the specific document
       qb = qb.select(['item.content', 'item.metadata', 'item.embedding'])
@@ -229,12 +224,30 @@ export class ChatService {
       }
     }
 
-    // Get chat history with stricter token budget
-    const maxTokens = 6000; // Reduced from 8192 to 6000
-    const reservedForOutput = 1500; // Increased from 1000 to 1500
+    // Get model-specific token limits
+    const tokenLimits = {
+      [ChatModel.GPT4_MINI]: {
+        maxContextTokens: 1000000, // GPT-4.1-mini has ~1M context window
+        reservedForOutput: 5000
+      },
+      [ChatModel.LLAMA_3]: {
+        maxContextTokens: 8000,
+        reservedForOutput: 1500
+      }
+    }[model] || { maxContextTokens: 6000, reservedForOutput: 1500 };
+
     const promptTokens = Math.ceil(promptText.length / 4);
     const contextTokens = Math.ceil(relevantChunks.join('').length / 4);
-    const historyTokenBudget = maxTokens - reservedForOutput - promptTokens - contextTokens;
+    const historyTokenBudget = tokenLimits.maxContextTokens - tokenLimits.reservedForOutput - promptTokens - contextTokens;
+
+    this.logger.log(`Token budget for user ${userId}, model ${model}:`, {
+      maxContextTokens: tokenLimits.maxContextTokens,
+      reservedForOutput: tokenLimits.reservedForOutput,
+      promptTokens,
+      contextTokens,
+      historyTokenBudget,
+      availableForHistory: Math.max(0, historyTokenBudget)
+    });
 
     const chatHistory = await this.chatHistoryService.getRecentHistory(userId, Math.max(0, historyTokenBudget));
     
@@ -270,17 +283,8 @@ export class ChatService {
     let finalMessages: { role: string; content: string }[];
 
     if (documentUuid) {
-      // DOCUMENT MODE - Use chat or agent prompt based on mode
-      if (mode === ChatMode.AGENT) {
-        // For agent mode, include full document content if available
-        if (documentContent) {
-          finalMessages = generateDocumentAgentPrompt(relevantChunks, chatHistory, promptText, documentContent, customInstructions);
-        } else {
-          finalMessages = generateDocumentAgentPrompt(relevantChunks, chatHistory, promptText, undefined, customInstructions);
-        }
-      } else {
-        finalMessages = generateDocumentChatPrompt(relevantChunks, chatHistory, promptText, customInstructions);
-      }
+      // DOCUMENT MODE - Always use document chat prompt
+      finalMessages = generateDocumentChatPrompt(relevantChunks, chatHistory, promptText, customInstructions);
     } else {
       // GENERAL/PROJECT MODE - Always conversational
       this.logger.log(`Generating RAG prompt for user ${userId}:`, {
@@ -310,7 +314,7 @@ export class ChatService {
     this.logger.log(`User message: ${chatMessages[chatMessages.length - 1]?.content}`);
 
     try {
-      return this.aiGatewayService.callChatCompletionsStream(chatMessages);
+      return this.aiGatewayService.callChatCompletionsStream(chatMessages, model);
     } catch (error) {
       this.logger.error(`AI Gateway streaming error for user ${userId}: ${error.message}`);
       

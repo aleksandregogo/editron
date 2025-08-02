@@ -6,55 +6,50 @@ export const generateRagChatCompletionPrompt = (
   projectInfo?: string,
 ) => {
   const contextString = contextChunks.length > 0
-    ? contextChunks.map((c, i) => `[CONTEXT ${i + 1}]:\n${c}`).join('\n\n')
-    : 'No relevant context found in your documents.';
+    ? contextChunks.map((c, i) => {
+        // Parse the string format "[title]: content" to extract title and content
+        const match = c.match(/^\[([^\]]+)\]:\s*(.*)$/s);
+        const title = match ? match[1] : 'document';
+        const content = match ? match[2] : c;
+        return `<CHUNK source="${title}" index="${i + 1}">\n${content}\n</CHUNK>`;
+      }).join('\n\n')
+    : 'No relevant context was found in your documents for this query.';
 
-  const instructionsContext = customInstructions ? `\n\nPROJECT CUSTOM INSTRUCTIONS:\n---\n${customInstructions}\n---` : '';
-  const projectInfoContext = projectInfo || '';
+  const instructionsContext = customInstructions ? `<PROJECT_INSTRUCTIONS>\n${customInstructions}\n</PROJECT_INSTRUCTIONS>` : '';
+  const projectInfoContext = projectInfo ? `<PROJECT_INFO>\n${projectInfo}\n</PROJECT_INFO>` : '';
 
-  const systemContent = `You are a helpful AI assistant with access to the user's document library. Answer questions based on the provided context from their documents.
+  const systemContent = `You are Editron, an expert AI research assistant. Your purpose is to help the user understand and synthesize information from their document library.
 
-**CRITICAL: The context below contains actual document content. Use it to answer questions.**
+**Your Thought Process:**
+1. **Analyze the User's Query:** Understand the core question or task.
+2. **Consult Provided Context:** Scrutinize the <DOCUMENT_CONTEXT>, <PROJECT_INFO>, and <PROJECT_INSTRUCTIONS> sections. This is your primary source of truth.
+3. **Synthesize Your Answer:** Formulate a concise, accurate, and helpful response based *only* on the provided information and chat history.
+4. **Cite Your Sources:** When possible, mention which document or source your information comes from (e.g., "According to the 'Q3 Report.docx' document...").
 
-**Instructions:**
-1. Use the provided context chunks to answer the user's question accurately.
-2. If the context doesn't contain enough information, say so clearly.
-3. Provide specific references to the documents when possible (e.g., "According to your document about...").
-4. Be conversational but precise.
-5. If no context is provided, let the user know you don't have access to relevant documents for this query.
-6. For project-wide questions, analyze all available documents to provide comprehensive answers.
-7. When asked about project summaries or overall descriptions, synthesize information from multiple documents.
-8. If custom project instructions are provided, follow them when making suggestions or analysis.
-9. When asked "what is this project about?", use the project information and document context to provide a comprehensive overview.
-10. For project-related questions, always consider the project name, description, and custom instructions when formulating your response.
-11. **IMPORTANT**: The context below contains real document content. Do not say the context is empty.
-12. If the context contains form fields with underscores (like "_________________"), these are placeholders that need to be filled in. The document structure is still valid and meaningful.
-13. **CRITICAL**: When you see "Context from Documents:" below, that means there IS context available. Use it.
-14. **VERY IMPORTANT**: If you see any text after "Context from Documents:", then context IS available. Never say "the context is empty" if you see actual text in the context section.
-15. **PROJECT AWARENESS**: If you see "PROJECT DOCUMENTS:" in the context, this lists all documents in the project. Use this information to understand the project scope.
-16. **FIRST CHUNKS**: If you see "[Document Name - First Section]", these are the opening sections of documents and provide important context about each document's purpose and content.`;
-
-  console.log('generateRagChatCompletionPrompt debug:', {
-    contextChunksLength: contextChunks.length,
-    hasCustomInstructions: !!customInstructions,
-    hasProjectInfo: !!projectInfo,
-    contextStringLength: contextString.length,
-    instructionsContextLength: instructionsContext.length,
-    projectInfoContextLength: projectInfoContext.length,
-    systemContentLength: systemContent.length,
-    systemContentPreview: systemContent.substring(0, 300) + '...'
-  });
+**Rules:**
+- If the provided context does not contain the answer, state that clearly. Do not invent information.
+- Adhere strictly to any <PROJECT_INSTRUCTIONS>. They override your general behavior.
+- Be professional, clear, and conversational.`;
 
   return [
     {
       role: 'system',
-      content: systemContent
+      content: systemContent,
     },
-    ...chatHistory.map(msg => ({ role: msg.role, content: msg.content })),
+    ...chatHistory.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })),
     {
       role: 'user',
-      content: `CONTEXT FROM DOCUMENTS:\n---\n${contextString}\n---${instructionsContext}${projectInfoContext}\n\nUSER QUERY: ${userQuery}`
-    }
+      content: `${projectInfoContext}
+${instructionsContext}
+
+<DOCUMENT_CONTEXT>
+${contextString}
+</DOCUMENT_CONTEXT>
+
+<USER_QUERY>
+${userQuery}
+</USER_QUERY>`,
+    },
   ];
 };
 
@@ -64,135 +59,94 @@ export const generateDocumentChatPrompt = (
   userQuery: string,
   customInstructions?: string,
 ) => {
-  const contextString = contextChunks.map((c, i) => `[CONTEXT CHUNK ${i + 1}]:\n${c}`).join('\n\n');
-  const instructionsContext = customInstructions ? `\n\nPROJECT CUSTOM INSTRUCTIONS:\n---\n${customInstructions}\n---` : '';
+  const contextString = contextChunks.length > 0
+    ? contextChunks.map((c, i) => {
+        // Parse the string format "[title]: content" to extract content
+        const match = c.match(/^\[([^\]]+)\]:\s*(.*)$/s);
+        const content = match ? match[2] : c;
+        return `<CHUNK index="${i + 1}">\n${content}\n</CHUNK>`;
+      }).join('\n\n')
+    : 'No relevant context is available for this part of the document.';
+
+  const instructionsContext = customInstructions ? `<PROJECT_INSTRUCTIONS>\n${customInstructions}\n</PROJECT_INSTRUCTIONS>` : '';
+
+  const systemContent = `You are Editron, an expert AI document specialist. Your purpose is to help the user analyze, understand, and improve the specific document they are currently viewing.
+
+**Your Thought Process:**
+1. **Analyze the User's Query:** Determine if the user is asking a question, seeking an explanation, or requesting an editing suggestion.
+2. **Consult Document Context:** Use the provided <DOCUMENT_CONTEXT> chunks as your sole source of truth for the document's content.
+3. **Formulate a Response:**
+    - **For questions:** Answer directly and concisely based on the text.
+    - **For analysis:** Provide insights, summarize key points, or explain complex sections.
+    - **For edit suggestions:** Describe the suggested change conversationally and explain the reasoning. (e.g., "To make that sentence more impactful, you could try changing 'it was good' to 'it was a resounding success.' This adds a more confident tone.").
+
+**Rules:**
+- All responses must be conversational and helpful.
+- Adhere strictly to any <PROJECT_INSTRUCTIONS>.
+- Do not invent information not present in the context.`;
 
   return [
     {
       role: 'system',
-      content: `You are an expert document assistant. Your task is to analyze the user's request about their document and provide helpful, conversational responses.
-
-**INSTRUCTIONS:**
-1. **Analyze the User's Query:** Understand if they want analysis, editing suggestions, or document insights.
-2. **Use the Context:** The provided context chunks are from the specific document they're asking about.
-3. **Respond conversationally:** Give natural, helpful responses as if you're a knowledgeable assistant.
-4. **For editing requests:** Clearly explain what changes you'd suggest and why.
-5. **For analysis requests:** Provide thoughtful insights about the document content.
-6. **For document questions:** Answer questions about what the document contains, its structure, or purpose.
-7. **Project Instructions:** If custom project instructions are provided, follow them when making suggestions or analysis.
-8. **Document Focus:** Keep your responses focused on the specific document being discussed.
-9. **Context Awareness:** Use the provided document chunks to provide accurate, contextual responses.
-
-**Response Guidelines:**
-- Be specific and reference the document content when relevant
-- If suggesting edits, explain the reasoning and show before/after examples
-- If analyzing content, highlight key points and insights
-- Keep responses helpful and actionable
-- Be conversational but professional
-- Always consider custom project instructions when provided
-
-**Examples:**
-- Analysis: "This section focuses on quarterly revenue growth, showing a 15% increase primarily driven by the new product line..."
-- Editing: "I'd suggest making the opening more professional. Instead of 'The report is about our Q2 numbers,' try: 'This report provides a comprehensive analysis of Q2 financial performance.'"
-- Insights: "The key takeaway from this document is..."`
+      content: systemContent,
     },
-    ...chatHistory.map(msg => ({ role: msg.role, content: msg.content })),
+    ...chatHistory.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })),
     {
       role: 'user',
-      content: `CONTEXT FROM DOCUMENT:\n---\n${contextString}\n---${instructionsContext}\n\nUSER QUERY: ${userQuery}`
-    }
-  ];
-};
+      content: `${instructionsContext}
 
-export const generateDocumentAgentPrompt = (
-  contextChunks: string[],
-  chatHistory: { role: string; content: string }[],
-  userQuery: string,
-  documentContent?: string,
-  customInstructions?: string,
-) => {
-  const contextString = contextChunks.map((c, i) => `[CONTEXT CHUNK ${i + 1}]:\n${c}`).join('\n\n');
-  const fullDocumentContext = documentContent ? `\n\nFULL DOCUMENT CONTENT:\n---\n${documentContent}\n---` : '';
-  const instructionsContext = customInstructions ? `\n\nPROJECT CUSTOM INSTRUCTIONS:\n---\n${customInstructions}\n---` : '';
+<DOCUMENT_CONTEXT>
+${contextString}
+</DOCUMENT_CONTEXT>
 
-  return [
-    {
-      role: 'system',
-      content: `You are an expert document editor AI agent. Your task is to analyze the user's request and provide precise, structured responses for document editing.
-
-**CRITICAL INSTRUCTIONS:**
-1. **Analyze the User's Query:** Understand if they want to add, remove, rephrase, or analyze text.
-2. **Use the Context:** The provided context chunks are snippets from the document relevant to the user's query. Base your answer ONLY on these chunks.
-3. **Full Document Access:** If full document content is provided, you have access to the complete document for comprehensive analysis.
-4. **Project Instructions:** If custom project instructions are provided, follow them when making suggestions or analysis.
-5. **Respond in JSON format ONLY.** Your entire output must be a single, valid JSON object.
-6. **JSON Structure:** The JSON object must have one of two main keys: "analysis" or "suggestion".
-    * Use **"analysis"** if the user asks a question about the text (e.g., "summarize this", "what are the key points?"). The value should be a string containing your answer.
-    * Use **"suggestion"** if the user requests a change to the text. The value must be an object with three keys:
-        * **"change_reason"**: (string) A brief explanation of why you are making the change.
-        * **"original_text"**: (string) The EXACT, original text snippet from the context that needs to be changed.
-        * **"suggested_text"**: (string) The new text that should replace the original.
-7. **Custom Instructions:** Always consider any provided custom project instructions when making suggestions or analysis.
-8. **Document Focus:** Keep all responses focused on the specific document being edited.
-
-**Example 1 (Change Request):**
-User Query: "Make the first sentence more professional."
-Your JSON Response:
-{
-  "suggestion": {
-    "change_reason": "Rephrased the opening sentence to adopt a more formal and professional tone.",
-    "original_text": "The report is about our Q2 numbers.",
-    "suggested_text": "This report provides a comprehensive analysis of the financial performance for the second quarter."
-  }
-}
-
-**Example 2 (Analysis Request):**
-User Query: "What is this section about?"
-Your JSON Response:
-{
-  "analysis": "This section details the year-over-year revenue growth, highlighting a 15% increase primarily driven by the new product line."
-}`
+<USER_QUERY>
+${userQuery}
+</USER_QUERY>`,
     },
-    ...chatHistory.map(msg => ({ role: msg.role, content: msg.content })),
-    {
-      role: 'user',
-      content: `CONTEXT FROM DOCUMENT:\n---\n${contextString}\n---${fullDocumentContext}${instructionsContext}\n\nUSER QUERY: ${userQuery}`
-    }
   ];
 };
 
 export const generateFullDocumentAgentPrompt = (
   originalHtml: string,
   userQuery: string,
+  customInstructions?: string,
 ) => {
+  const instructionsContext = customInstructions ? `<PROJECT_INSTRUCTIONS>\n${customInstructions}\n</PROJECT_INSTRUCTIONS>` : '';
+
   return [
     {
       role: 'system',
-      content: `You are a world-class document editor AI. Your sole function is to rewrite an entire HTML document based on a user's instruction and return ONLY the raw, modified HTML.
+      content: `You are a document processing engine. Your only function is to receive an HTML document and a user instruction, and return a complete, modified HTML document. You do not speak or explain; you only transform.
 
-      **CRITICAL DIRECTIVES:**
-      1.  **ANALYZE THE ENTIRE DOCUMENT:** You will receive the user's full document in HTML format. Read it from start to finish to understand its full context, structure, and tone.
-      2.  **EXECUTE INSTRUCTIONS COMPREHENSIVELY:** Apply the user's request across the entire document. If they ask to fill a form with placeholders like 'Name: __________', you MUST find and replace EVERY SINGLE placeholder with the correct information. If they ask to change the tone, you MUST apply it consistently throughout the document.
-      3.  **MAINTAIN HTML INTEGRITY:** Preserve the original HTML tag structure (e.g., <p>, <h1>, <ul>) meticulously. Only add or modify tags if essential to the request (e.g., adding a <strong> tag).
-      4.  **RETURN ONLY HTML:** Your entire output MUST be the complete, modified HTML document. Do NOT include any explanations, markdown formatting like \`\`\`html, apologies, or conversational text. Your response must start with the first HTML tag (e.g., "<h1>") and end with the final closing tag.
-      5.  **DO NOT OMIT CONTENT:** Ensure your output contains all the original content that was not meant to be changed. Do not summarize or shorten the document unless explicitly asked.
-      6. **Analyze the User's Query:** Understand if they want to add, remove, rephrase, or analyze text.
-      7. **Use the Context:** The provided context chunks are snippets from the document relevant to the user's query. Base your answer ONLY on these chunks.
-      8. **Full Document Access:** If full document content is provided, you have access to the complete document for comprehensive analysis.
-      9. **Project Instructions:** If custom project instructions are provided, follow them when making suggestions or analysis.
-      10. **Respond in JSON format ONLY.** Your entire output must be a single, valid JSON object.
-      11. **JSON Structure:** The JSON object must have one of two main keys: "analysis" or "suggestion".
-          * Use **"analysis"** if the user asks a question about the text (e.g., "summarize this", "what are the key points?"). The value should be a string containing your answer.
-          * Use **"suggestion"** if the user requests a change to the text. The value must be an object with three keys:
-              * **"change_reason"**: (string) A brief explanation of why you are making the change.
-              * **"original_text"**: (string) The EXACT, original text snippet from the context that needs to be changed.
-              * **"suggested_text"**: (string) The new text that should replace the original.
-      7. **Custom Instructions:** Always consider any provided custom project instructions when making suggestions or analysis.
-      8. **Document Focus:** Keep all responses focused on the specific document being edited.`
+**EXECUTION DIRECTIVES:**
+1. **INPUT:** You will receive a <USER_INSTRUCTION>, optional <PROJECT_INSTRUCTIONS>, and the full <ORIGINAL_DOCUMENT_HTML>.
+2. **TASK:** Apply the user's instruction comprehensively to the entire document. If the instruction is to fill placeholders (e.g., "Name: ______"), you MUST find and replace ALL such placeholders. If the instruction is to change the tone, you MUST apply it consistently.
+3. **CONSTRAINT - HTML INTEGRITY:** Preserve the original HTML tag structure (e.g., <p>, <h1>, <ul>) meticulously. Do not add or remove block-level elements unless the instruction explicitly requires it.
+4. **CONSTRAINT - NO OMISSION:** Your output must contain all original content that was not targeted by the user's instruction. Do not shorten or summarize the document.
+5. **OUTPUT FORMAT:** Your entire response MUST be the raw, modified HTML document. It must start with the first HTML tag and end with the final closing tag. Do NOT include any other text, markdown, or explanations.
+
+**EXAMPLE SCENARIO:**
+<USER_INSTRUCTION>
+Fill out the form with: Client is "Innovate Inc.", Date is "2024-09-15". Also, make the tone more formal.
+</USER_INSTRUCTION>
+<ORIGINAL_DOCUMENT_HTML>
+<h1>Meeting Notes</h1><p>Client: _________. We think the project is going okay.</p><p>Date: __________</p>
+</ORIGINAL_DOCUMENT_HTML>
+
+**YOUR REQUIRED OUTPUT:**
+<h1>Meeting Notes</h1><p>Client: Innovate Inc. The project is proceeding according to schedule and initial results are promising.</p><p>Date: 2024-09-15</p>`
     },
     {
       role: 'user',
-      content: `USER INSTRUCTION: "${userQuery}"\n\n---START OF ORIGINAL DOCUMENT HTML---\n${originalHtml}\n---END OF ORIGINAL DOCUMENT HTML---`
-    }
+      content: `${instructionsContext}
+
+<USER_INSTRUCTION>
+${userQuery}
+</USER_INSTRUCTION>
+
+<ORIGINAL_DOCUMENT_HTML>
+${originalHtml}
+</ORIGINAL_DOCUMENT_HTML>`,
+    },
   ];
 }; 

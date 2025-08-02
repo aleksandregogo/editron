@@ -58,6 +58,9 @@ services:
       CLOUDFLARE_GATEWAY_SLUG: ${CLOUDFLARE_GATEWAY_SLUG:-editron-ai}
       CLOUDFLARE_EMBEDDING_MODEL_ID: ${CLOUDFLARE_EMBEDDING_MODEL_ID}
       CLOUDFLARE_LLM_MODEL_ID: ${CLOUDFLARE_LLM_MODEL_ID}
+      # OpenAI Configuration for GPT-4 Turbo
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_CHAT_MODEL_ID: ${OPENAI_CHAT_MODEL_ID:-gpt-4-turbo-preview}
     volumes:
       - ./:/app
       - /app/node_modules

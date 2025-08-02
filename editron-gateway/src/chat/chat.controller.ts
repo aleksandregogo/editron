@@ -33,7 +33,6 @@ export class ChatController {
       promptText,
       documentUuid,
       projectUuid,
-      mode,
     );
 
     return responseStream.pipe(
