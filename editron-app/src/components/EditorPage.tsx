@@ -157,10 +157,33 @@ const EditorPage = () => {
       console.error('Agent edit failed:', error);
       setIsAgentModalOpen(false);
       
+      // Extract error message from backend response
+      let errorMessage = 'Sorry, I encountered an error while processing your request. Please try again.';
+      
+      if (error instanceof Error) {
+        const errorText = error.message;
+        // Try to parse the error message to extract the backend response
+        if (errorText.includes('API request failed:') && errorText.includes('{')) {
+          try {
+            // Extract the JSON part from the error message
+            const jsonStart = errorText.indexOf('{');
+            const jsonEnd = errorText.lastIndexOf('}') + 1;
+            const jsonStr = errorText.substring(jsonStart, jsonEnd);
+            const errorData = JSON.parse(jsonStr);
+            
+            if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+          } catch (parseError) {
+            console.error('Failed to parse error response:', parseError);
+          }
+        }
+      }
+      
       // Add error response to chat history
       addMessageToChat({
         role: 'assistant',
-        content: 'Sorry, I encountered an error while processing your request. Please try again.',
+        content: errorMessage,
         mode: 'agent'
       });
     } finally {
@@ -168,16 +191,13 @@ const EditorPage = () => {
     }
   }, [document?.uuid, projectUuid]);
 
-  // Set global agent request function immediately when component mounts
+  // Set global agent request function only after document is loaded
   useEffect(() => {
-    setGlobalAgentRequest(handleAgentRequest);
-    return () => setGlobalAgentRequest(null);
-  }, [handleAgentRequest]);
-
-  // Set it immediately on mount
-  useEffect(() => {
-    setGlobalAgentRequest(handleAgentRequest);
-  }, []);
+    if (document && document.uuid) {
+      setGlobalAgentRequest(handleAgentRequest);
+      return () => setGlobalAgentRequest(null);
+    }
+  }, [handleAgentRequest, document]);
 
   const handleAgentConfirm = async (finalContent: string) => {
     if (!document) return;
