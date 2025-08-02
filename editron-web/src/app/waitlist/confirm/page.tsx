@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
+import { config } from "@/lib/config"
 
 export default function WaitlistConfirmPage() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
@@ -21,7 +22,7 @@ export default function WaitlistConfirmPage() {
 
     const confirmWaitlist = async () => {
       try {
-        const response = await fetch(`/api/waitlist/confirm?token=${token}`)
+        const response = await fetch(`${config.backendUrl}/waitlist/confirm?token=${token}`)
         const data = await response.json()
 
         if (response.ok) {
@@ -31,7 +32,7 @@ export default function WaitlistConfirmPage() {
           setStatus("error")
           setMessage(data.message || "Confirmation failed")
         }
-      } catch (error) {
+      } catch {
         setStatus("error")
         setMessage("Network error. Please try again.")
       }

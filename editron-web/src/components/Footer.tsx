@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button"
 import { WaitlistDialog } from "@/components/WaitlistDialog"
-import { Github, Twitter, Linkedin } from "lucide-react"
 
 export function Footer() {
   return (

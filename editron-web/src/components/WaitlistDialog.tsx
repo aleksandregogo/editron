@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { config } from "@/lib/config"
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -29,7 +30,7 @@ interface WaitlistDialogProps {
 declare global {
   interface Window {
     turnstile: {
-      render: (container: HTMLElement, options: any) => string
+      render: (container: HTMLElement, options: Record<string, unknown>) => string
       reset: (widgetId: string) => void
     }
   }
@@ -102,7 +103,7 @@ export function WaitlistDialog({ children }: WaitlistDialogProps) {
     console.log('renderTurnstile called', { 
       turnstileExists: typeof window.turnstile !== 'undefined',
       containerExists: !!turnstileContainerRef.current,
-      siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA",
+      siteKey: config.turnstileSiteKey,
       windowTurnstile: window.turnstile
     })
     
@@ -115,7 +116,7 @@ export function WaitlistDialog({ children }: WaitlistDialogProps) {
       turnstileContainerRef.current.innerHTML = ''
       
       const widgetId = window.turnstile.render(turnstileContainerRef.current, {
-        sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA",
+        sitekey: config.turnstileSiteKey,
         callback: (token: string) => {
           console.log('Turnstile callback triggered', token)
           setTurnstileToken(token)
@@ -159,7 +160,7 @@ export function WaitlistDialog({ children }: WaitlistDialogProps) {
     setError("")
 
     try {
-      const response = await fetch("/api/waitlist/join", {
+      const response = await fetch(`${config.backendUrl}/waitlist/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -184,7 +185,7 @@ export function WaitlistDialog({ children }: WaitlistDialogProps) {
         }
         setTurnstileToken(null)
       }
-    } catch (error) {
+    } catch {
       setError("Network error. Please try again.")
       if (turnstileWidgetId.current && typeof window.turnstile !== 'undefined') {
         window.turnstile.reset(turnstileWidgetId.current)
@@ -211,7 +212,7 @@ export function WaitlistDialog({ children }: WaitlistDialogProps) {
         <DialogHeader>
           <DialogTitle>Join the Waitlist</DialogTitle>
           <DialogDescription>
-            Be among the first to experience Editron. We'll notify you when we launch.
+            Be among the first to experience Editron. We&apos;ll notify you when we launch.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
