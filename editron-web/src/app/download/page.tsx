@@ -33,7 +33,7 @@ export default function DownloadPage() {
                 size="lg" 
                 variant="gradient" 
                 className="text-lg px-8 py-6 h-auto flex flex-col items-center gap-3 cursor-pointer"
-                onClick={() => window.open('https://example.com/download/macos', '_blank')}
+                onClick={() => window.open('http://167.99.196.131/downloads/editron_0.1.0_aarch64.dmg', '_blank')}
               >
                 <Apple className="w-8 h-8" />
                 <div>
