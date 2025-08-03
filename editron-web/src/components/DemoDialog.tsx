@@ -12,16 +12,7 @@ export function DemoDialog({ open, onOpenChange }: DemoDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-full h-[600px] p-0 bg-black border-0">
         <DialogTitle hidden></DialogTitle>
-        <div className="relative w-full h-full">
-          <iframe
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1"
-            title="Editron Demo"
-            className="w-full h-full"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
+        <video src="https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/demo.mkv" className="w-full h-full bg-black" controls />
       </DialogContent>
     </Dialog>
   )
