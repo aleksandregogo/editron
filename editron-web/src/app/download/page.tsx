@@ -17,14 +17,14 @@ const downloads: DownloadInfo[] = [
     platform: "macOS",
     version: "0.1.0",
     size: "5.9MB",
-    url: "https://drive.google.com/file/d/1rlfXo2oaQ2ogsO-ahPuLP6TZZFs-olOO/view?usp=sharing",
+    url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_aarch64.dmg",
     available: true
   },
   {
     platform: "Windows",
     version: "0.1.0", 
     size: "5.3MB",
-    url: "https://drive.google.com/file/d/1oiu2EwC7MEsYgZQ2WAALv75P0jaxlpzK/view?usp=sharinge",
+    url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_x64_en-US.msi",
     available: true
   }
 ]
