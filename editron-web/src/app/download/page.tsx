@@ -23,8 +23,8 @@ const downloads: DownloadInfo[] = [
   {
     platform: "Windows",
     version: "0.1.0", 
-    size: "5.9MB",
-    url: "https://github.com/your-org/editron/releases/latest/download/editron_0.1.0_x64.exe",
+    size: "5.3MB",
+    url: "https://drive.google.com/file/d/1oiu2EwC7MEsYgZQ2WAALv75P0jaxlpzK/view?usp=sharinge",
     available: true
   }
 ]
