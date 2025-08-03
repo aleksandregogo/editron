@@ -9,7 +9,7 @@ export function LandingPage() {
       <HeroSection />
       <FeaturesSection />
       <HowItWorksSection />
-      <Footer />
+      {/* <Footer /> */}
     </div>
   )
 } 
