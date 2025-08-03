@@ -19,7 +19,7 @@ const steps = [
   {
     number: "4",
     title: "Send with Gmail",
-    description: "Once ready, send your document directly via Gmail—without leaving Editron.",
+    description: "Once ready, send your document directly via Gmail without leaving Editron.",
   },
 ]
 

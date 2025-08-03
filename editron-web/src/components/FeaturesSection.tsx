@@ -5,12 +5,12 @@ const features = [
   {
     icon: FolderOpen,
     title: "Project Workspaces",
-    description: "Organize your work into focused projects with custom AI instructions. Give the assistant full context—once, not over and over.",
+    description: "Organize your work into focused projects with custom AI instructions. Give the assistant full context once, not over and over.",
   },
   {
     icon: Bot,
     title: "AI Agent Mode",
-    description: "Let AI act as your co-editor. It reads your entire document—not just snippets—for accurate, consistent changes.",
+    description: "Let AI act as your co-editor. It reads your entire document for accurate, consistent changes.",
   },
   {
     icon: Eye,
@@ -20,7 +20,7 @@ const features = [
   {
     icon: Mail,
     title: "Gmail Integration",
-    description: "Bring email into your workflow. Draft and edit documents while staying connected—all with local privacy and cloud intelligence.",
+    description: "Bring email into your workflow. Draft and edit documents while staying connected",
   },
 ]
 
