@@ -17,7 +17,7 @@ const downloads: DownloadInfo[] = [
   {
     platform: "macOS",
     version: "0.1.0",
-    size: "6.1MB",
+    size: "5.8MB",
     url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_x64.dmg",
     available: true,
     architecture: "Apple Silicon (M1/M2/M3)"
@@ -25,7 +25,7 @@ const downloads: DownloadInfo[] = [
   {
     platform: "macOS",
     version: "0.1.0",
-    size: "5.8MB",
+    size: "6.1MB",
     url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_x64.dmg",
     available: true,
     architecture: "Intel"
@@ -197,8 +197,6 @@ export default function DownloadPage() {
                         macOS Instructions
                       </h4>
                       <div className="text-orange-200 text-sm space-y-2">
-                        <p><strong>Option 1:</strong> Try to open the app — macOS will block it.</p>
-                        <p><strong>Option 2:</strong> Allow manually via Security & Privacy settings:</p>
                         <ol className="list-decimal list-inside space-y-1 ml-2">
                           <li>Open System Settings → Privacy & Security</li>
                           <li>Scroll down to the &quot;Security&quot; section</li>
