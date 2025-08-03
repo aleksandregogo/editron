@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Apple, Monitor, AlertCircle, CheckCircle } from "lucide-react"
+import { Apple, Monitor, AlertCircle, Download } from "lucide-react"
 import { useState } from "react"
 
 interface DownloadInfo {
@@ -10,19 +10,29 @@ interface DownloadInfo {
   size: string
   url: string
   available: boolean
+  architecture?: string
 }
 
 const downloads: DownloadInfo[] = [
   {
     platform: "macOS",
     version: "0.1.0",
-    size: "5.9MB",
-    url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_aarch64.dmg",
-    available: true
+    size: "6.1MB",
+    url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_x64.dmg",
+    available: true,
+    architecture: "Apple Silicon (M1/M2/M3)"
+  },
+  {
+    platform: "macOS",
+    version: "0.1.0",
+    size: "5.8MB",
+    url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_x64.dmg",
+    available: true,
+    architecture: "Intel"
   },
   {
     platform: "Windows",
-    version: "0.1.0", 
+    version: "0.1.0",
     size: "5.3MB",
     url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_x64_en-US.msi",
     available: true
@@ -39,23 +49,26 @@ export default function DownloadPage() {
       return
     }
 
-    setDownloading(download.platform)
+    setDownloading(download.platform + (download.architecture ? `-${download.architecture}` : ''))
     setDownloadError(null)
 
     try {
       // Create a temporary link element to trigger download
       const link = document.createElement('a')
       link.href = download.url
-      link.download = `editron-${download.version}-${download.platform.toLowerCase()}.${download.platform === 'macOS' ? 'dmg' : 'exe'}`
+      const fileName = download.architecture
+        ? `editron-${download.version}-${download.platform.toLowerCase()}-${download.architecture.toLowerCase().replace(/[^a-z0-9]/g, '-')}.dmg`
+        : `editron-${download.version}-${download.platform.toLowerCase()}.${download.platform === 'macOS' ? 'dmg' : 'exe'}`
+      link.download = fileName
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      
+
       // Simulate download completion
       setTimeout(() => {
         setDownloading(null)
       }, 2000)
-    } catch (error) {
+    } catch {
       setDownloadError("Download failed. Please try again or contact support.")
       setDownloading(null)
     }
@@ -71,7 +84,7 @@ export default function DownloadPage() {
       </div>
 
       <div className="relative z-10 min-h-screen flex items-center justify-center">
-        <div className="text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <div className="text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
           <div className="animate-fade-in-up">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
               Download{" "}
@@ -79,57 +92,87 @@ export default function DownloadPage() {
                 Editron
               </span>
             </h1>
-            
-            <p className="text-xl sm:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Get the desktop application that transforms how you work with documents. 
+
+            <p className="text-xl sm:text-2xl text-gray-300 mb-16 max-w-3xl mx-auto leading-relaxed">
+              Get the desktop application that transforms how you work with documents.
               Available for macOS and Windows.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto animate-fade-in-up delay-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto animate-fade-in-up delay-300">
               {downloads.map((download) => (
-                <div key={download.platform} className="relative">
-                  <Button 
-                    size="lg" 
-                    variant={download.available ? "gradient" : "outline"}
-                    className={`text-lg px-8 py-6 h-auto flex flex-col items-center gap-3 cursor-pointer w-full ${
-                      !download.available ? 'opacity-60 cursor-not-allowed' : ''
-                    }`}
-                    onClick={() => handleDownload(download)}
-                    disabled={!download.available || downloading === download.platform}
-                  >
-                    {downloading === download.platform ? (
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                    ) : download.platform === "macOS" ? (
-                      <Apple className="w-8 h-8" />
-                    ) : (
-                      <Monitor className="w-8 h-8" />
+                <div key={download.platform + (download.architecture ? `-${download.architecture}` : '')} className="relative group">
+                  <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 w-full h-80 flex flex-col justify-between">
+                    {/* Platform Icon */}
+                    <div className="flex items-center justify-center mb-6">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center border border-white/10">
+                        {downloading === (download.platform + (download.architecture ? `-${download.architecture}` : '')) ? (
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-white/30 border-t-white"></div>
+                        ) : download.platform === "macOS" ? (
+                          <Apple className="w-8 h-8 text-white" />
+                        ) : (
+                          <Monitor className="w-8 h-8 text-white" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Platform Info */}
+                    <div className="text-center mb-6">
+                      <h3 className="text-xl font-bold text-white mb-2">
+                        {download.platform}
+                      </h3>
+                      {download.architecture && (
+                        <p className="text-sm text-blue-300 font-medium mb-2">
+                          {download.architecture}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-center gap-4 text-sm text-gray-400">
+                        <span>v{download.version}</span>
+                        <span>•</span>
+                        <span>{download.size}</span>
+                      </div>
+                    </div>
+
+                    {/* Download Button */}
+                    <Button
+                      size="lg"
+                      className={`w-full h-14 text-lg font-semibold rounded-xl transition-all duration-300 ${download.available
+                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl hover:scale-105'
+                          : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
+                        }`}
+                      onClick={() => handleDownload(download)}
+                      disabled={!download.available || downloading === (download.platform + (download.architecture ? `-${download.architecture}` : ''))}
+                    >
+                      {downloading === (download.platform + (download.architecture ? `-${download.architecture}` : '')) ? (
+                        <div className="flex items-center gap-3">
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
+                          <span>Downloading...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 cursor-pointer">
+                          <Download className="w-5 h-5" />
+                          <span>Download Now</span>
+                        </div>
+                      )}
+                    </Button>
+
+                    {/* Coming Soon Badge */}
+                    {!download.available && (
+                      <div className="absolute -top-3 -right-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs px-3 py-1 rounded-full font-semibold shadow-lg">
+                        Coming Soon
+                      </div>
                     )}
-                    <div>
-                      <div className="font-semibold">
-                        {downloading === download.platform ? "Downloading..." : `Download for ${download.platform}`}
-                      </div>
-                      <div className="text-sm opacity-90">
-                        v{download.version} • {download.size}
-                      </div>
-                    </div>
-                  </Button>
-                  
-                  {!download.available && (
-                    <div className="absolute -top-2 -right-2 bg-yellow-500 text-yellow-900 text-xs px-2 py-1 rounded-full font-medium">
-                      Coming Soon
-                    </div>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
 
             {downloadError && (
-              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg max-w-2xl mx-auto animate-fade-in-up">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="mt-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl max-w-2xl mx-auto animate-fade-in-up">
+                <div className="flex items-start gap-4">
+                  <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" />
                   <div className="text-left">
-                    <h3 className="font-semibold text-red-400 mb-1">Download Error</h3>
-                    <p className="text-red-200 text-sm leading-relaxed">
+                    <h3 className="font-semibold text-red-400 mb-2 text-lg">Download Error</h3>
+                    <p className="text-red-200 text-base leading-relaxed">
                       {downloadError}
                     </p>
                   </div>
@@ -137,13 +180,56 @@ export default function DownloadPage() {
               </div>
             )}
 
-            <div className="mt-8 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg max-w-2xl mx-auto animate-fade-in-up delay-500">
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 bg-yellow-500 rounded-full flex-shrink-0 mt-0.5"></div>
+            <div className="mt-6 p-6 bg-orange-500/10 border border-orange-500/20 rounded-2xl max-w-3xl mx-auto animate-fade-in-up delay-600">
+              <div className="flex items-start gap-4">
+                <div className="w-6 h-6 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex-shrink-0 mt-1"></div>
                 <div className="text-left">
-                  <h3 className="font-semibold text-yellow-400 mb-1">Important Notice</h3>
-                  <p className="text-yellow-200 text-sm leading-relaxed">
-                    Gmail API integration may not work due to Google&apos;s limitations on non-production applications. 
+                  <h3 className="font-semibold text-orange-400 mb-2 text-lg">Installation Warning</h3>
+                  <p className="text-orange-200 text-base leading-relaxed mb-4">
+                    The application is not code-signed yet. During installation, your system may show security warnings.
+                    You&apos;ll need to bypass these warnings to continue with the installation. This is normal for development builds.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-4">
+                      <h4 className="font-semibold text-orange-300 mb-2 flex items-center gap-2">
+                        <Apple className="w-4 h-4" />
+                        macOS Instructions
+                      </h4>
+                      <div className="text-orange-200 text-sm space-y-2">
+                        <p><strong>Option 1:</strong> Try to open the app — macOS will block it.</p>
+                        <p><strong>Option 2:</strong> Allow manually via Security & Privacy settings:</p>
+                        <ol className="list-decimal list-inside space-y-1 ml-2">
+                          <li>Open System Settings → Privacy & Security</li>
+                          <li>Scroll down to the &quot;Security&quot; section</li>
+                          <li>You&apos;ll see a message: &quot;Editron was blocked from use because it is not from an identified developer.&quot;</li>
+                          <li>Click &quot;Allow Anyway&quot;</li>
+                          <li>Try opening the app again. You&apos;ll now get the option to Open</li>
+                        </ol>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-4">
+                      <h4 className="font-semibold text-orange-300 mb-2 flex items-center gap-2">
+                        <Monitor className="w-4 h-4" />
+                        Windows Instructions
+                      </h4>
+                      <div className="text-orange-200 text-sm">
+                        <p>When Windows shows a security warning, click <strong>&quot;More info&quot;</strong> and then <strong>&quot;Run anyway&quot;</strong> to continue with the installation.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl max-w-3xl mx-auto animate-fade-in-up delay-500">
+              <div className="flex items-start gap-4">
+                <div className="w-6 h-6 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex-shrink-0 mt-1"></div>
+                <div className="text-left">
+                  <h3 className="font-semibold text-yellow-400 mb-2 text-lg">Important Notice</h3>
+                  <p className="text-yellow-200 text-base leading-relaxed">
+                    Gmail API integration may not work due to Google&apos;s limitations on non-production applications.
                     This is a known limitation during development and testing phases.
                   </p>
                 </div>
