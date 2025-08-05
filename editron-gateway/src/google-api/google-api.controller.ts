@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Get, Delete, Query } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Get, Delete, Query, Res, Param } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { GoogleApiService } from './google-api.service';
 import { ExchangeGoogleApiCodeDto } from './dto/exchange-google-api-code.dto';
@@ -63,5 +64,26 @@ export class GoogleApiController {
       sendEmailDto.body,
       sendEmailDto.documentUuid,
     );
+  }
+
+  @Get('download-pdf/:documentUuid')
+  @UseGuards(AuthGuard('jwt'))
+  async downloadPdf(
+    @Param('documentUuid') documentUuid: string,
+    @AuthUser() userInfo: UserInfo,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.googleApiService.generatePdfForDownload(
+      userInfo.user.id,
+      documentUuid,
+    );
+    
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="document.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    
+    res.send(pdfBuffer);
   }
 } 

@@ -273,6 +273,29 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  async downloadPdf(documentUuid: string): Promise<Blob> {
+    try {
+      const headers = await this.getAuthHeaders();
+      
+      const response = await fetch(`${this.baseUrl}/api/v1/google-api/download-pdf/${documentUuid}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': headers['Authorization'],
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Download failed: ${response.status} ${errorText}`);
+      }
+
+      return response.blob();
+    } catch (error) {
+      console.error('Download failed:', error);
+      throw error;
+    }
+  }
 }
 
 export const apiClient = new ApiClient(); 

@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileText, Calendar, MessageSquare, MoreVertical, Trash2 } from 'lucide-react';
+import { Upload, FileText, Calendar, MessageSquare, MoreVertical, Trash2, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { apiClient } from '../utils/api';
 import { ProjectModal } from './CreateProjectModal';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
+import { useToast } from '../hooks/use-toast';
 
 interface Project {
   uuid: string;
@@ -33,6 +34,8 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (projectUuid) {
@@ -154,6 +157,37 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
     } catch (error) {
       console.error('Failed to delete document:', error);
       throw error;
+    }
+  };
+
+  const handleDocumentDownload = async (documentUuid: string, documentTitle: string) => {
+    setDownloadingDoc(documentUuid);
+    try {
+      const blob = await apiClient.downloadPdf(documentUuid);
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = `${documentTitle}.pdf`;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: 'Download Successful',
+        description: 'Your document has been downloaded. Please check your Downloads folder.',
+      });
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: 'Download Failed',
+        description: error instanceof Error ? error.message : 'An error occurred while downloading the document.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloadingDoc(null);
     }
   };
 
@@ -312,6 +346,26 @@ export const ProjectDashboard = ({ refreshProjects }: { refreshProjects?: () => 
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       Open
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        handleDocumentDownload(doc.uuid, doc.title);
+                      }}
+                      disabled={downloadingDoc === doc.uuid}
+                    >
+                      {downloadingDoc === doc.uuid ? (
+                        <>
+                          <div className="w-3 h-3 border border-primary-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download PDF
+                        </>
+                      )}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={(e) => e.preventDefault()}

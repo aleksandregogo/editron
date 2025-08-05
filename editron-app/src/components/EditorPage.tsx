@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Mail } from 'lucide-react';
+import { ArrowLeft, Clock, Mail, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import TiptapEditor from './TiptapEditor';
 import { AgentReviewModal } from './Diff/AgentReviewModal';
 import ComposeEmailModal from './Email/ComposeEmailModal';
 import { apiClient } from '../utils/api';
+import { useToast } from '../hooks/use-toast';
 
 // Global state for agent request function
 let globalAgentRequestFunction: ((promptText: string) => void) | null = null;
@@ -64,6 +65,10 @@ const EditorPage = () => {
 
   // Email Modal state
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
+  
+  // Download state
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (uuid) {
@@ -217,6 +222,39 @@ const EditorPage = () => {
     setIsAgentLoading(false);
   };
 
+  const handleDownloadPdf = async () => {
+    if (!document) return;
+    
+    setIsDownloading(true);
+    try {
+      const blob = await apiClient.downloadPdf(document.uuid);
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = `${document.title}.pdf`;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: 'Download Successful',
+        description: 'Your document has been downloaded. Please check your Downloads folder.',
+      });
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: 'Download Failed',
+        description: error instanceof Error ? error.message : 'An error occurred while downloading the document.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-neutral-50">
@@ -312,6 +350,25 @@ const EditorPage = () => {
           </div>
           
           <div className="flex items-center gap-3">
+            <Button
+              onClick={handleDownloadPdf}
+              disabled={isDownloading}
+              variant="outline"
+              size="sm"
+              className="btn-secondary gap-2"
+            >
+              {isDownloading ? (
+                <>
+                  <div className="w-3 h-3 border border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Download PDF
+                </>
+              )}
+            </Button>
             {userProfile?.isGoogleApiConnected && (
               <Button
                 onClick={() => setIsComposeModalOpen(true)}

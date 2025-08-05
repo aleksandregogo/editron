@@ -266,6 +266,28 @@ export class GoogleApiService {
     }
   }
 
+  async generatePdfForDownload(userId: number, documentUuid: string): Promise<Buffer> {
+    try {
+      // Fetch the document to get its LATEST HTML content and title
+      const document = await this.documentRepository.findOne({
+        where: { uuid: documentUuid, user: { id: userId } },
+      });
+
+      if (!document) {
+        throw new NotFoundException('Document not found or access denied.');
+      }
+
+      // Generate the PDF from the document's HTML content
+      this.logger.log(`Generating PDF for download: ${document.title}`);
+      const pdfBuffer = await this.pdfGenerationService.generatePdfFromHtml(document.content);
+
+      return pdfBuffer;
+    } catch (error) {
+      this.logger.error('Error generating PDF for download:', error);
+      throw new InternalServerErrorException('Failed to generate PDF for download');
+    }
+  }
+
   private constructEmailMessage(
     to: string,
     subject: string,
