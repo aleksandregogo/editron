@@ -1660,3 +1660,16 @@ pub async fn start_gmail_api_connect_flow(app: AppHandle) -> Result<String, Stri
 
     Ok(code_verifier_to_return)
 } 
+
+/// Tauri command to open a URL in the default browser
+#[tauri::command]
+pub async fn open_url(app: AppHandle, url: String) -> Result<(), String> {
+    log::info!("Opening URL in default browser: {}", url);
+    
+    app.opener().open_url(&url, None::<String>).map_err(|e| {
+        log::error!("Failed to open URL: {}", e);
+        e.to_string()
+    })?;
+    
+    Ok(())
+}

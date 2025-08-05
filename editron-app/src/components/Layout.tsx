@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Folder, FolderPlus, LogOut, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { Folder, FolderPlus, LogOut, ChevronLeft, ChevronRight, Settings, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateProjectModal } from './CreateProjectModal';
 import { RightSidebar } from './RightSidebar';
@@ -116,6 +116,16 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
     } catch (error) {
       console.error('Logout failed:', error);
       onLogout();
+    }
+  };
+
+  const handleFeedbackClick = async () => {
+    try {
+      await invoke("open_url", {
+        url: "https://docs.google.com/forms/d/e/1FAIpQLScoQ23r0NnYxQwqXfyoX5KLVRAA89g-GJeunXvmFHWxOuv_Bg/formResponse"
+      });
+    } catch (error) {
+      console.error('Failed to open feedback form:', error);
     }
   };
 
@@ -260,6 +270,15 @@ const Layout = ({ profile, children, onLogout }: LayoutProps) => {
         {/* Bottom Actions */}
         <div className="border-t border-neutral-200 flex-shrink-0">
           <div className="flex flex-col">
+            <Button
+              onClick={handleFeedbackClick}
+              variant="default"
+              size="sm"
+              className="w-full h-12 rounded-none border-0 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 shadow-md font-medium"
+            >
+              <MessageSquare className="w-5 h-5" />
+              {!isLeftSidebarCollapsed && <span className="truncate ml-3">Feedback</span>}
+            </Button>
             <Button
               onClick={() => setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed)}
               variant="ghost"

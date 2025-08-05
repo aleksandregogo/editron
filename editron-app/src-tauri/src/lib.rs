@@ -21,7 +21,8 @@ pub fn run() {
             auth::get_profile,
             auth::logout,
             auth::get_access_token,
-            auth::start_gmail_api_connect_flow
+            auth::start_gmail_api_connect_flow,
+            auth::open_url
         ])
         .setup(|app| {
             let handle = app.handle().clone();
