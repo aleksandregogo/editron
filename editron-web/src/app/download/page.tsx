@@ -18,7 +18,7 @@ const downloads: DownloadInfo[] = [
     platform: "macOS",
     version: "0.1.0",
     size: "5.8MB",
-    url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_x64.dmg",
+    url: "https://pub-075671a95f4140f4ad7316e2da06f730.r2.dev/editron_0.1.0_aarch64.dmg",
     available: true,
     architecture: "Apple Silicon (M1/M2/M3)"
   },
